@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import reciter.model.scopus.ScopusArticle;
-import reciter.scopus.model.Pmids;
+import reciter.model.scopus.ScopusQuery;
 import reciter.scopus.retriever.ScopusArticleRetriever;
 
 import java.util.ArrayList;
@@ -31,11 +31,11 @@ public class ScopusController {
     })
     @RequestMapping(value = "/query/", method = RequestMethod.POST, produces = "application/json")
     @ResponseBody
-    public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody Pmids pmids) {
-        slf4jLogger.info("calling retrieve with pmids size=[" + pmids.getPmids().size() + "]");
+    public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody ScopusQuery scopusQuery) {
+        slf4jLogger.info("calling retrieve with pmids size=[" + scopusQuery.getQuery().size() + "]");
         ScopusArticleRetriever scopusArticleRetriever = new ScopusArticleRetriever();
-        List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(pmids.getPmids()), pmids.getType());
-        slf4jLogger.info("finished retrieving with pmids size=[" + pmids.getPmids().size() + "]");
+        List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
+        slf4jLogger.info("finished retrieving with pmids size=[" + scopusQuery.getQuery().size() + "]");
         return ResponseEntity.ok(scopusArticles);
     }
 }
