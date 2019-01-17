@@ -14,3 +14,8 @@
 
 A tool to retrieve Scopus articles. It currently only supports Scopus article retrievals only by PMIDs.
 We can also do DOI
+
+
+## Configuring API key
+
+https://dev.elsevier.com/
