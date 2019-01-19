@@ -12,7 +12,7 @@
 [![Github All Releases](https://img.shields.io/github/downloads/wcmc-its/ReCiter-Scopus-Retrieval-Tool/total.svg)]()
 [![Open Source Love](https://badges.frapsoft.com/os/v3/open-source.svg?v=102)](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/) 
 
-Authorized users may download records from the Scopus database. This application presents an easier to use interface for developers who use Scopus.
+Authorized users may download records from the Scopus database. This application presents an easier to use interface for developers who use Scopus. It corrects some errors in Scopus including cases where it duplicates authors.
 
 This application was written to work with [ReCiter](https://github.com/wcmc-its/ReCiter/), a tool for disambiguating articles written in PubMed and also indexed in Scopus. However, this application can work as a standalone service. Scopus is not necessary to run ReCiter. In testing, it does help improve accuracy by several percentage points.
 
@@ -38,6 +38,9 @@ Ths Scopus Retrieval Tool API only allows you to search by one field at a time. 
 }
 ```
 
+![https://raw.githubusercontent.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/master/files/SearchScopus-PMID.gif](https://raw.githubusercontent.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/master/files/SearchScopus-PMID.gif)
+
+
 ### Search for multiple PMIDs
 ```
 {
@@ -58,6 +61,8 @@ Ths Scopus Retrieval Tool API only allows you to search by one field at a time. 
   "type": "doi"
 }
 ```
+
+![https://raw.githubusercontent.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/master/files/SearchScopus-DOI.gif](https://raw.githubusercontent.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/master/files/SearchScopus-DOI.gif)
 
 ### Search by Scopus Doc ID
 ```
