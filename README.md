@@ -12,10 +12,69 @@
 [![Github All Releases](https://img.shields.io/github/downloads/wcmc-its/ReCiter-Scopus-Retrieval-Tool/total.svg)]()
 [![Open Source Love](https://badges.frapsoft.com/os/v3/open-source.svg?v=102)](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/) 
 
-A tool to retrieve Scopus articles. It currently only supports Scopus article retrievals only by PMIDs.
-We can also do DOI
+Authorized users may download records from the Scopus database. This application presents an easier to use interface for developers who use Scopus.
+
+This application was written to work with [ReCiter](https://github.com/wcmc-its/ReCiter/), a tool for disambiguating articles written in PubMed and also indexed in Scopus. However, this application can work as a standalone service. Scopus is not necessary to run ReCiter. In testing, it does help improve accuracy by several percentage points.
 
 
 ## Configuring API key
 
 https://dev.elsevier.com/
+
+
+## Using
+
+Ths Scopus Retrieval Tool API only allows you to search by one field at a time. Field codes are listed on the [Elsevier site](https://service.elsevier.com/app/answers/detail/a_id/11236/supporthub/scopus/#tips) or in the [Scopus data model](https://github.com/wcmc-its/ReCiter-Scopus-Model) for this tool.
+
+
+
+### Search for one PMID
+```
+{
+  "query": [
+    "20000000"
+  ],
+  "type": "PMID"
+}
+```
+
+### Search for multiple PMIDs
+```
+{
+  "query": [
+      "20000000",
+      "21000000"
+  ],
+  "type": "PMID"
+}
+```
+
+### Search by DOI
+```
+{
+  "query": [
+     "10.1155/2018/1920276"
+  ],
+  "type": "doi"
+}
+```
+
+### Search by Scopus Doc ID
+```
+{
+  "query": [
+     "34547687746"
+  ],
+  "type": "scopus-id"
+}
+```
+
+### Search by institutional affiliation identifier
+```
+{
+  "query": [
+    "60007997"
+  ],
+  "type": "af-id"
+}
+```
