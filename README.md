@@ -14,17 +14,30 @@
 
 Authorized users may download records from the Scopus database. This application presents an easier to use interface for developers who use Scopus. It corrects some errors in Scopus including cases where it duplicates authors.
 
-This application was written to work with [ReCiter](https://github.com/wcmc-its/ReCiter/), a tool for disambiguating articles written in PubMed and also indexed in Scopus. However, this application can work as a standalone service. Scopus is not necessary to run ReCiter. In testing, it does help improve accuracy by several percentage points.
+This application was written to work with [ReCiter](https://github.com/wcmc-its/ReCiter/), a tool for disambiguating articles written in PubMed and also indexed in Scopus. However, this application can work as a standalone service. In testing, it does help improve accuracy by several percentage points, but Scopus is not necessary to run ReCiter.
 
 
-## Configuring API key
+## Installing
+To provide...
 
-https://dev.elsevier.com/
+
+## Authentication
+
+1. Get API key and insttoken from Elsevier. [This Elsevier document](https://dev.elsevier.com/tecdoc_api_authentication.html) describes how to obtain these codes.
+
+2. Enter the API key into your Environment Variables where field name = `SCOPUS_API_KEY`.
+- If you are deploying locally, go to terminal and write `export SCOPUS_API_KEY={api-key}`. 
+- If you are deploying to an AWS instance, [add the environment variable](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/environments-cfg-softwaresettings.html#environments-cfg-softwaresettings-console) in the Elastic Beanstalk configuration section.
+
+3. Enter the insttoken into your Environment Variables where field name = `SCOPUS_INST_TOKEN`.
+- If you are deploying locally, go to terminal and write `export SCOPUS_INST_TOKEN={api-key}`. 
+- If you are deploying to an AWS instance, [add the environment variable](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/environments-cfg-softwaresettings.html#environments-cfg-softwaresettings-console) in the Elastic Beanstalk configuration section.
+
 
 
 ## Using
 
-Ths Scopus Retrieval Tool API only allows you to search by one field at a time. Field codes are listed on the [Elsevier site](https://service.elsevier.com/app/answers/detail/a_id/11236/supporthub/scopus/#tips) or in the [Scopus data model](https://github.com/wcmc-its/ReCiter-Scopus-Model) for this tool.
+Ths Scopus Retrieval Tool API only allows you to search one field at a time. Field codes are listed on the [Elsevier site](https://service.elsevier.com/app/answers/detail/a_id/11236/supporthub/scopus/#tips) or in the [Scopus data model](https://github.com/wcmc-its/ReCiter-Scopus-Model) for this tool.
 
 
 
