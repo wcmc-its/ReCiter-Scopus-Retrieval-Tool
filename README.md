@@ -21,7 +21,7 @@ This application was written to work with [ReCiter](https://github.com/wcmc-its/
 To provide...
 
 
-## Authentication
+## Configuring
 
 1. Get API key and insttoken from Elsevier. [This Elsevier document](https://dev.elsevier.com/tecdoc_api_authentication.html) describes how to obtain these codes.
 
