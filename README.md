@@ -20,6 +20,14 @@ Authorized users may download records from the Scopus database. This application
 This application was written to work with [ReCiter](https://github.com/wcmc-its/ReCiter/), a tool for disambiguating articles written in PubMed and also indexed in Scopus. However, this application can work as a standalone service. In testing, it does help improve accuracy by several percentage points, but Scopus is not necessary to run ReCiter.
 
 
+## Advantages over using Scopus API alone
+
+This tool has several advantages over using the Scopus API alone:
+- The Scopus API outputs data as XML while the ReCiter Scopus Retrieval Tool outputs data as JSON, a format which is easier for developers to use.
+- The Scopus API sometimes creates redundant author objects or otherwise doesn’t properly assign sequence numbers to authors. This tool addresses both problems.
+
+
+
 ## Installing
 
 1. Navigate to directory where you wish to install the application, e.g., `cd ~/Paul/Documents/`
