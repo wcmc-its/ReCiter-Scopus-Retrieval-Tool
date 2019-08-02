@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -75,25 +76,26 @@ public class ScopusArticleRetriever {
 			}
 		}
 
-		List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<RetryerCallable<List<ScopusArticle>>>();
+		/*List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<RetryerCallable<List<ScopusArticle>>>();
 		Retryer<List<ScopusArticle>> retryer = RetryerBuilder.<List<ScopusArticle>>newBuilder()
                 .retryIfResult(Predicates.<List<ScopusArticle>>isNull())
                 .retryIfExceptionOfType(IOException.class)
                 .retryIfRuntimeException()
                 .withWaitStrategy(WaitStrategies.fibonacciWait(100L, 2L, TimeUnit.MINUTES))
                 .withStopStrategy(StopStrategies.stopAfterAttempt(10))
-                .build();
+                .build();*/
+		List<Callable<List<ScopusArticle>>> callables = new ArrayList<>();
 
 		for (String query : pmidQueries) {
 			ScopusXmlQuery scopusXmlQuery = new ScopusXmlQuery.ScopusXmlQueryBuilder(query, SCOPUS_MAX_THRESHOLD).build();
 			String scopusUrl = scopusXmlQuery.getQueryUrl();
 			ScopusUriParserCallable scopusUriParserCallable = new ScopusUriParserCallable(new ScopusXmlHandler(), scopusUrl);
-			RetryerCallable<List<ScopusArticle>> retryerCallable = retryer.wrap(scopusUriParserCallable);
-        	callables.add(retryerCallable);
-			//callables.add(scopusUriParserCallable);
+			//RetryerCallable<List<ScopusArticle>> retryerCallable = retryer.wrap(scopusUriParserCallable);
+        	//callables.add(retryerCallable);
+			callables.add(scopusUriParserCallable);
 		}
 
-		List<List<ScopusArticle>> list = new ArrayList<List<ScopusArticle>>();
+		List<List<ScopusArticle>> list = new ArrayList<>();
 
 		int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
 		ExecutorService executor = Executors.newFixedThreadPool(numAvailableProcessors);
