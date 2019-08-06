@@ -76,29 +76,31 @@ public class ScopusArticleRetriever {
 			}
 		}
 
-		/*List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<RetryerCallable<List<ScopusArticle>>>();
+		List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<RetryerCallable<List<ScopusArticle>>>();
+		
 		Retryer<List<ScopusArticle>> retryer = RetryerBuilder.<List<ScopusArticle>>newBuilder()
                 .retryIfResult(Predicates.<List<ScopusArticle>>isNull())
                 .retryIfExceptionOfType(IOException.class)
                 .retryIfRuntimeException()
                 .withWaitStrategy(WaitStrategies.fibonacciWait(100L, 2L, TimeUnit.MINUTES))
                 .withStopStrategy(StopStrategies.stopAfterAttempt(10))
-                .build();*/
-		List<Callable<List<ScopusArticle>>> callables = new ArrayList<>();
+                .build();
+		
+		//List<Callable<List<ScopusArticle>>> callables = new ArrayList<>();
 
 		for (String query : pmidQueries) {
 			ScopusXmlQuery scopusXmlQuery = new ScopusXmlQuery.ScopusXmlQueryBuilder(query, SCOPUS_MAX_THRESHOLD).build();
 			String scopusUrl = scopusXmlQuery.getQueryUrl();
 			ScopusUriParserCallable scopusUriParserCallable = new ScopusUriParserCallable(new ScopusXmlHandler(), scopusUrl);
-			//RetryerCallable<List<ScopusArticle>> retryerCallable = retryer.wrap(scopusUriParserCallable);
-        	//callables.add(retryerCallable);
-			callables.add(scopusUriParserCallable);
+			RetryerCallable<List<ScopusArticle>> retryerCallable = retryer.wrap(scopusUriParserCallable);
+        	callables.add(retryerCallable);
+			//callables.add(scopusUriParserCallable);
 		}
 
 		List<List<ScopusArticle>> list = new ArrayList<>();
 
-		int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
-		ExecutorService executor = Executors.newFixedThreadPool(numAvailableProcessors);
+		//int numAvailableProcessors = Runtime.getRuntime().availableProcessors();
+		ExecutorService executor = Executors.newCachedThreadPool();//Executors.newFixedThreadPool(numAvailableProcessors);
 
 		try {
 			executor.invokeAll(callables)
