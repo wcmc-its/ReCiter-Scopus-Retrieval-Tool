@@ -17,6 +17,7 @@ phases:
         - cat ./kubernetes/k8-deployment.yaml
   build:
     commands:
+      - mvn clean install -Dmaven.test.skip=true
       - docker build --tag $REPOSITORY_URI:$TAG .
 
 
