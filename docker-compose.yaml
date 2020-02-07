@@ -1,0 +1,24 @@
+version: '3'
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    restart: always
+    ports:
+    - 80:80
+    - 443:443
+    volumes:
+    - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+    - app
+
+  app:
+    restart: always
+    build: ./
+    working_dir: /app
+    environment: 
+      - SCOPUS_API_KEY=e0fa610418a4859d24f2457e021aea60
+      - SCOPUS_INST_TOKEN=d44a98333430d51ce0c860c2b84b9032
+    expose:
+      - "5000"
+    command: mvn clean spring-boot:run
