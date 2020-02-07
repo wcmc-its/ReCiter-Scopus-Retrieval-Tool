@@ -19,7 +19,7 @@ spec:
     rollingUpdate:
       maxUnavailable: 0
     type: RollingUpdate
-  replicas: 2
+  replicas: 1
   template:
     metadata:
       labels:
@@ -29,7 +29,7 @@ spec:
         owner: szd2013
     spec:
       containers:
-      - image: xxxxxxxxxxxx.dkr.ecr.us-east-1.amazonaws.com/wcmc/reciter/reciter-scopus-retrieval-tool:tag
+      - image: CONTAINER_IMAGE
         name: reciter-scopus
         imagePullPolicy: Always
         env:
@@ -53,7 +53,7 @@ spec:
           name: reciter-scopus
         resources:
           requests:
-            memory: 1750m
+            memory: 1.7G
             cpu: 0.8
           limits:
             memory: 2G
@@ -120,7 +120,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: reciter-scopus
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 4
   metrics:
   - type: Resource
