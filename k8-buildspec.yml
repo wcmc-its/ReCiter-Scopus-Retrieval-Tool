@@ -33,7 +33,6 @@ phases:
           docker build --tag $REPOSITORY_URI:$TAG .
         fi
 
-
   post_build:
     commands:
       - |
