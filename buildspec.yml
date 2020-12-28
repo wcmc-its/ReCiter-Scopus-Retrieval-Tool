@@ -2,6 +2,8 @@ version: 0.2
 # https://docs.aws.amazon.com/codebuild/latest/userguide/getting-started.html
 phases:
   install:
+    runtime-versions:
+      java: openjdk11
     commands:
       - echo Nothing to do in the install phase...
   pre_build:
