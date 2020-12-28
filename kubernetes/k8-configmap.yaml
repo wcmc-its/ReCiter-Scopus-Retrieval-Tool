@@ -14,7 +14,7 @@ data:
         listen [::]:80 default_server;
 
         location /scopus {
-            rewrite ^/scopus/swagger-ui.html$ /swagger-ui.html break;
+            rewrite ^/scopus/swagger-ui/index.html$ /swagger-ui/index.html break;
             rewrite ^/scopus/(.*)$ /scopus/$1 break;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
