@@ -4,13 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.github.rholder.retry.Retryer;
 import com.github.rholder.retry.Retryer.RetryerCallable;
@@ -19,6 +15,9 @@ import com.github.rholder.retry.StopStrategies;
 import com.github.rholder.retry.WaitStrategies;
 import com.google.common.base.Predicates;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import reciter.model.scopus.ScopusArticle;
 import reciter.scopus.callable.ScopusUriParserCallable;
 import reciter.scopus.querybuilder.ScopusXmlQuery;
@@ -26,7 +25,7 @@ import reciter.scopus.xmlparser.ScopusXmlHandler;
 
 public class ScopusArticleRetriever {
 
-	private final static Logger slf4jLogger = LoggerFactory.getLogger(ScopusArticleRetriever.class);
+	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusArticleRetriever.class);
 
 	/**
 	 * Scopus retrieval threshold.
@@ -49,7 +48,7 @@ public class ScopusArticleRetriever {
 		if (pmids.size() == 1) {
 			pmidQueries.add(type + "(" + pmids.get(0) + ")");
 		} else {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			int i = 0;
 			Iterator<Object> itr = pmids.iterator();
 			while (itr.hasNext()) {
@@ -65,7 +64,7 @@ public class ScopusArticleRetriever {
 				}
 				if (i != 0 && i % SCOPUS_DEFAULT_THRESHOLD == 0) {
 					pmidQueries.add(sb.toString());
-					sb = new StringBuffer();
+					sb = new StringBuilder();
 				}
 				i++;
 			}
@@ -76,7 +75,7 @@ public class ScopusArticleRetriever {
 			}
 		}
 
-		List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<RetryerCallable<List<ScopusArticle>>>();
+		List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<>();
 		
 		Retryer<List<ScopusArticle>> retryer = RetryerBuilder.<List<ScopusArticle>>newBuilder()
                 .retryIfResult(Predicates.<List<ScopusArticle>>isNull())

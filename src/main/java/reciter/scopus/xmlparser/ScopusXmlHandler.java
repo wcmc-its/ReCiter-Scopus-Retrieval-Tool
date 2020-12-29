@@ -2,13 +2,9 @@ package reciter.scopus.xmlparser;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -25,8 +21,6 @@ import reciter.model.scopus.ScopusArticle;
  */
 public class ScopusXmlHandler extends DefaultHandler {
 
-	private final static Logger slf4jLogger = LoggerFactory.getLogger(ScopusXmlHandler.class);
-
 	private ScopusArticle scopusArticle;
 	
 	private boolean bScopusDocId;
@@ -34,7 +28,6 @@ public class ScopusXmlHandler extends DefaultHandler {
 	private boolean bAffiliation;
 	private boolean bAfid;
 	private boolean bAffilname;
-//	private boolean bNameVariant;
 	private boolean bAffiliationCity;
 	private boolean bAffiliationCountry;
 
@@ -65,7 +58,6 @@ public class ScopusXmlHandler extends DefaultHandler {
 
 	private int afid;
 	private StringBuilder affilname = new StringBuilder();
-//	private String nameVariant;
 	private String affiliationCity;
 	private String affiliationCountry;
 	private Map<Integer, Affiliation> affiliations = new HashMap<>();
@@ -112,9 +104,6 @@ public class ScopusXmlHandler extends DefaultHandler {
 				affilname.setLength(0);
 				bAffilname = true;
 			}
-//			if (qName.equalsIgnoreCase("name-variant")) {
-//				bNameVariant = true;
-//			}
 			if (qName.equalsIgnoreCase("affiliation-city")) {
 				bAffiliationCity = true;
 			}
@@ -234,12 +223,8 @@ public class ScopusXmlHandler extends DefaultHandler {
 				afid = Integer.parseInt(new String(ch, start, length));
 			} 
 			if (bAffilname) {
-				//affilname = new String(ch, start, length);
 				affilname.append(ch, start, length);
 			}
-//			if (bNameVariant) {
-//				nameVariant = new String(ch, start, length);
-//			}
 			if (bAffiliationCity) {
 				affiliationCity = new String(ch, start, length);
 			}
@@ -360,9 +345,6 @@ public class ScopusXmlHandler extends DefaultHandler {
 			if (qName.equalsIgnoreCase("affilname")) {
 				bAffilname = false;
 			}
-//			if (qName.equalsIgnoreCase("name-variant")) {
-//				bNameVariant = false;
-//			}
 			if (qName.equalsIgnoreCase("affiliation-city")) {
 				bAffiliationCity = false;
 			}
@@ -472,8 +454,8 @@ public class ScopusXmlHandler extends DefaultHandler {
 			if (bError) {
 				scopusArticle = null;
 			} else {
-				List<Affiliation> affiliationList = new ArrayList<Affiliation>();
-				List<Author> authorList = new ArrayList<Author>();
+				List<Affiliation> affiliationList = new ArrayList<>();
+				List<Author> authorList = new ArrayList<>();
 				for (Affiliation affiliation : affiliations.values()) {
 					affiliationList.add(affiliation);
 				}
@@ -499,7 +481,6 @@ public class ScopusXmlHandler extends DefaultHandler {
 						.citedByCount(citedByCount)
 						.authors(authorList).build();
 				scopusArticles.add(scopusArticle);
-				// TODO refactor
 				scopusArticle = null;
 				doi=null;
 				affiliations.clear();
