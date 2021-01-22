@@ -27,6 +27,16 @@ This tool has several advantages over using the Scopus API alone:
 - The Scopus API sometimes creates redundant author objects or otherwise doesn’t properly assign sequence numbers to authors. This tool addresses both problems.
 
 
+## Prerequisites
+
+- Java 11
+- Latest version of Maven. To install Maven navigate to the directory where ReCiter Scopus Retrieval Tool will be installed, execute `brew install maven` and then `mvn clean install`
+If you want to use Java 8 then update `<java.version>1.8</java.version>` in [pom.xml](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/blob/59b12e33edf744afe4431f3e4d35e5ba16821b09/pom.xml#L18)
+
+It is not necessary to install ReCiter in order to use the API.
+
+
+
 
 ## Installing
 
@@ -51,7 +61,7 @@ This tool has several advantages over using the Scopus API alone:
 - Option #1: Set at the system level using this command `export SERVER_PORT=[your port number]`. This supersedes any ports set in application.properties.
 - Option #2: Update the application.properties file located at `/src/main/resources/` Make sure the port doesn't conflict with other services such as ReCiter or ReCiter PubMed Retrieval Tool.
 7. Build Maven instance `mvn spring-boot:run`
-8. Visit `http://localhost:[your port number]/swagger-ui.html` to see the Swagger page for this service.
+8. Visit `http://localhost:[your port number]/swagger-ui/index.html` or `http://localhost:[your port number]/swagger-ui/` to see the Swagger page for this service.
 
 
 ## Obtaining an API key and INST_TOKEN
