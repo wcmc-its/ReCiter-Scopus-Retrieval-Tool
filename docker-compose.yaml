@@ -17,8 +17,8 @@ services:
     build: ./
     working_dir: /app
     environment: 
-      - SCOPUS_API_KEY=e0fa610418a4859d24f2457e021aea60
-      - SCOPUS_INST_TOKEN=d44a98333430d51ce0c860c2b84b9032
+      - SCOPUS_API_KEY=xxxxxxxxxxxxx
+      - SCOPUS_INST_TOKEN=xxxxxxxxxx
     expose:
       - "5000"
     command: mvn clean spring-boot:run
