@@ -6,21 +6,20 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import reciter.model.scopus.ScopusArticle;
 import reciter.model.scopus.ScopusQuery;
 import reciter.scopus.retriever.ScopusArticleRetriever;
 
-@Controller
+@RestController
 @RequestMapping("/scopus")
 @Tag(name="ScopusController", description ="Querying Scopus with PMID, SCOPUS-ID or DOI")
 public class ScopusController {
@@ -34,7 +33,6 @@ public class ScopusController {
             @ApiResponse(responseCode = "404", description = "The resource you were trying to reach is not found")
     })
     @PostMapping(value = "/query/", produces = "application/json")
-    @ResponseBody
     public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody ScopusQuery scopusQuery) {
         slf4jLogger.info("calling retrieve with pmids size=[" + scopusQuery.getQuery().size() + "]");
         ScopusArticleRetriever scopusArticleRetriever = new ScopusArticleRetriever();
