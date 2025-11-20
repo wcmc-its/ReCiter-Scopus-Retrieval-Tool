@@ -5,7 +5,7 @@ phases:
     runtime-versions:
       java: corretto17
     commands:
-      - kubectl version --short --client   
+      - kubectl version --client   
   pre_build:
       commands:
         # Fetch Docker credentials from AWS Secrets Manager
