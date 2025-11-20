@@ -37,7 +37,7 @@ phases:
             sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-prod"'@'  -e 's@APPNAME@'"reciter-scopus-prod"'@' -e 's@HPANAME@'"hpa-reciter-scopus-prod"'@' -e 's@ENVIRONMENT_LABEL@'"prod"'@' kubernetes/k8-deployment.yaml;
           fi
         #- $(aws ecr get-login --no-include-email)
-         - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+        - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
         - cat ./kubernetes/k8-deployment.yaml
   build:
     commands:
