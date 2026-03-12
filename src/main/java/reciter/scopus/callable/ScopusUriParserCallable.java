@@ -47,7 +47,12 @@ public class ScopusUriParserCallable implements Callable<List<ScopusArticle>> {
 		SAXParser saxParser = SAXParserFactory.newInstance().newSAXParser();
 		saxParser.parse(source, xmlHandler);
 		List<ScopusArticle> scopusArticles = xmlHandler.getScopusArticles();
-		slf4jLogger.info("Number of Scopus article retrieved=[" + scopusArticles.size() + "] for query=[" + uri + "].");
+		int errorCount = xmlHandler.getErrorEntryCount();
+		if (errorCount > 0) {
+			slf4jLogger.warn("Scopus batch had {} error entries (articles silently dropped) for query=[{}]", errorCount, uri);
+		}
+		slf4jLogger.info("Number of Scopus article retrieved=[{}], errors=[{}] for query=[{}]",
+				scopusArticles.size(), errorCount, uri);
 		return scopusArticles;
 	}
 	

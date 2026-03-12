@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -15,11 +17,15 @@ import reciter.model.scopus.ScopusArticle;
 
 /**
  * The {@code ScopusXmlHandler} class parses Scopus XML.
- * 
+ *
  * @author jil3004
  *
  */
 public class ScopusXmlHandler extends DefaultHandler {
+
+	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusXmlHandler.class);
+
+	private int errorEntryCount;
 
 	private ScopusArticle scopusArticle;
 	
@@ -452,7 +458,10 @@ public class ScopusXmlHandler extends DefaultHandler {
 		// Check for error entry. Return null.
 		if (qName.equalsIgnoreCase("entry")) {
 			if (bError) {
+				errorEntryCount++;
+				slf4jLogger.warn("Scopus returned error entry (total errors in this batch: {})", errorEntryCount);
 				scopusArticle = null;
+				bError = false;
 			} else {
 				List<Affiliation> affiliationList = new ArrayList<>();
 				List<Author> authorList = new ArrayList<>();
@@ -481,10 +490,29 @@ public class ScopusXmlHandler extends DefaultHandler {
 						.citedByCount(citedByCount)
 						.authors(authorList).build();
 				scopusArticles.add(scopusArticle);
+				// Reset all per-entry fields to prevent cross-contamination between entries.
+				// Previously only doi was reset; pubmedId (and others) could leak from entry N
+				// to entry N+1 when the latter lacked a <pubmed-id> tag — particularly dangerous
+				// in DOI-fallback queries where Scopus entries may genuinely lack a PubMed ID.
 				scopusArticle = null;
-				doi=null;
+				scopusDocId = null;
+				pubmedId = 0;
+				doi = null;
+				subType = null;
+				subTypeDescription = null;
+				title = null;
+				publicationName = null;
+				coverDate = null;
+				coverDisplayDate = null;
+				issn = null;
+				eissn = null;
+				volume = null;
+				issueIdentifier = null;
+				pageRange = null;
+				citedByCount = 0;
 				affiliations.clear();
 				authors.clear();
+				bError = false;
 			}
 		}
 	}
@@ -495,5 +523,9 @@ public class ScopusXmlHandler extends DefaultHandler {
 
 	public List<ScopusArticle> getScopusArticles() {
 		return scopusArticles;
+	}
+
+	public int getErrorEntryCount() {
+		return errorEntryCount;
 	}
 }
