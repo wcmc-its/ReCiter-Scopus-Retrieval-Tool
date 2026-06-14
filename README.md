@@ -131,3 +131,9 @@ Ths Scopus Retrieval Tool API only allows you to search one field at a time. Fie
   "type": "af-id"
 }
 ```
+
+> **Note:** `pmid`, `doi`, and `scopus-id` lookups each match a single article, but an
+> `af-id` query can match an entire institution's output. This service requests only the
+> first 25 results per query and does **not** paginate, so an `af-id` search returns at most
+> 25 articles. It is intended for identifier lookups; bulk affiliation harvesting is out of
+> scope.
