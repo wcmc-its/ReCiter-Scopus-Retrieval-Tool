@@ -1,7 +1,7 @@
 # ReCiter-Scopus-Retrieval-Tool
 
 ![Build Status](https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoid0xxSUlOU1ZkOW9QNkwyem5wbDJKQTNieEZHMXNCc3NXalJJRlVCR2c3KzJtWDByOWVOek54Ukh4TXVHcGhsYUFFajk2Y0tRNDVNUzF1SHJPVDhhaDM0PSIsIml2UGFyYW1ldGVyU3BlYyI6IjNCZEI0Q3RoN3hWME1uM3QiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
-![version](https://img.shields.io/badge/version-1.0-blue.svg?maxAge=2592000)
+![version](https://img.shields.io/badge/version-1.1.0-blue.svg?maxAge=2592000)
 [![codebeat badge](https://codebeat.co/badges/7a467876-39c4-4e2b-8987-0183f596ffd9)](https://codebeat.co/projects/github-com-wcmc-its-reciter-scopus-retrieval-tool-master)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
@@ -31,7 +31,6 @@ This tool has several advantages over using the Scopus API alone:
 
 - Java 11
 - Latest version of Maven. To install Maven navigate to the directory where ReCiter Scopus Retrieval Tool will be installed, execute `brew install maven` and then `mvn clean install`
-If you want to use Java 8 then update `<java.version>1.8</java.version>` in [pom.xml](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/blob/59b12e33edf744afe4431f3e4d35e5ba16821b09/pom.xml#L18)
 
 It is not necessary to install ReCiter in order to use the API.
 
