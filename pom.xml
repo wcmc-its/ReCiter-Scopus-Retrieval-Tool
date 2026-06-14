@@ -18,6 +18,19 @@
         <java.version>11</java.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- guava-retrying declares an open-ended Guava range "[10.+,)", which lets a
+                 clean build silently pull whatever the newest Guava is. Pin it for
+                 reproducible builds. -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.6.0-jre</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -42,6 +55,19 @@
         		<exclusion>
         			<groupId>org.slf4j</groupId>
         			<artifactId>slf4j-simple</artifactId>
+        		</exclusion>
+        		<!-- The model jar transitively drags ~30 unused jars into the fat jar: a
+        		     2016-era AWS SDK and a build-time Swagger codegen plugin (with maven-core,
+        		     aether, plexus, rhino, libphonenumber, swagger 1.5.19...). This service
+        		     calls neither at runtime, so exclude both to shrink the jar and remove
+        		     stale CVE surface. -->
+        		<exclusion>
+        			<groupId>com.amazonaws</groupId>
+        			<artifactId>aws-java-sdk-dynamodb</artifactId>
+        		</exclusion>
+        		<exclusion>
+        			<groupId>io.swagger</groupId>
+        			<artifactId>swagger-codegen-maven-plugin</artifactId>
         		</exclusion>
         	</exclusions>
         </dependency>
