@@ -1,4 +1,4 @@
-FROM adoptopenjdk/openjdk11:alpine-jre
+FROM amazoncorretto:11-alpine
 
 RUN mkdir -p /app
 WORKDIR /app
@@ -8,4 +8,4 @@ COPY ${JAR_FILE} /app/app.jar
 RUN wget https://download.newrelic.com/newrelic/java-agent/newrelic-agent/current/newrelic-java.zip && \
     unzip newrelic-java.zip -d /app
 EXPOSE 5000
-CMD java -Djava.security.egd=file:/dev/./urandom -XX:+PrintFlagsFinal $JAVA_OPTIONS -jar /app/app.jar
+CMD java -Djava.security.egd=file:/dev/./urandom $JAVA_OPTIONS -jar /app/app.jar
