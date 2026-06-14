@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
+import reciter.model.scopus.Affiliation;
 import reciter.model.scopus.Author;
 import reciter.model.scopus.ScopusArticle;
 
@@ -344,5 +345,171 @@ class ScopusXmlHandlerTest {
         ScopusXmlHandler handler = parseWithHandler(xml);
         assertEquals(0, handler.getScopusArticles().size());
         assertEquals(3, handler.getErrorEntryCount());
+    }
+
+    // ------------------------------------------------------------------
+    // characters() accumulation — text must not be truncated by entities
+    // or by SAX splitting one element across multiple callbacks
+    // ------------------------------------------------------------------
+
+    @Test
+    void titleWithEntitiesIsNotTruncated() throws Exception {
+        // SAX delivers "Cancer ", "&", " Genomics in ", "<", "vivo", ">", " studies"
+        // as separate characters() callbacks. Assigning (instead of appending) would
+        // keep only the last chunk.
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <dc:title>Cancer &amp; Genomics in &lt;vivo&gt; studies</dc:title>"
+                + "  <prism:publicationName>Acta &amp; Biology</prism:publicationName>"
+                + "  <author seq=\"1\"><authid>1</authid><surname>O&apos;Brien</surname></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        assertEquals("Cancer & Genomics in <vivo> studies", a.getTitle());
+        assertEquals("Acta & Biology", a.getPublicationName());
+        assertEquals("O'Brien", a.getAuthors().get(0).getSurname());
+    }
+
+    @Test
+    void longTitleSpanningMultipleBuffersIsNotTruncated() throws Exception {
+        // Exceed the parser's internal character buffer (~8KB) to force multiple
+        // characters() callbacks for a single element.
+        StringBuilder longTitle = new StringBuilder();
+        for (int i = 0; i < 20000; i++) {
+            longTitle.append('A');
+        }
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <dc:title>" + longTitle + "</dc:title>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        assertEquals(20000, a.getTitle().length(), "long title must be preserved in full");
+        assertEquals(longTitle.toString(), a.getTitle());
+    }
+
+    @Test
+    void afidSplitByEntityIsParsedAsOneNumber() throws Exception {
+        // <afid> text split by a numeric entity (&#48; == '0') must accumulate to a
+        // single id ("600" + "0" + "7997" = 60007997), not fragment into [600, 7997].
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <affiliation><afid>600&#48;7997</afid><affilname>WCM</affilname></affiliation>"
+                + "  <author seq=\"1\"><authid>1</authid><surname>X</surname>"
+                + "    <afid>600&#48;7997</afid></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        assertEquals(1, a.getAffiliations().size());
+        assertEquals(60007997, a.getAffiliations().get(0).getAfid());
+        assertEquals(1, a.getAuthors().get(0).getAfids().size());
+        assertEquals(60007997, a.getAuthors().get(0).getAfids().get(0));
+    }
+
+    // ------------------------------------------------------------------
+    // Per-author and per-affiliation fields must not leak within an entry
+    // ------------------------------------------------------------------
+
+    @Test
+    void authorFieldsDoNotLeakToNextAuthor() throws Exception {
+        // Author 1 is fully populated; author 2 (a consortium author) has only authid.
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <author seq=\"1\"><authid>111</authid><authname>Smith J.</authname>"
+                + "    <surname>Smith</surname><given-name>John</given-name><initials>J.</initials></author>"
+                + "  <author seq=\"2\"><authid>222</authid></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        Author second = a.getAuthors().stream().filter(au -> au.getSeq() == 2).findFirst().orElseThrow();
+        assertEquals(222L, second.getAuthid());
+        assertNull(second.getSurname(), "surname leaked from previous author");
+        assertNull(second.getGivenName(), "givenName leaked from previous author");
+        assertNull(second.getInitials(), "initials leaked from previous author");
+        assertNull(second.getAuthname(), "authname leaked from previous author");
+    }
+
+    @Test
+    void authorAfidsDoNotLeakToNextAuthor() throws Exception {
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <author seq=\"1\"><authid>111</authid><surname>A</surname>"
+                + "    <afid>60007997</afid><afid>60027950</afid></author>"
+                + "  <author seq=\"2\"><authid>222</authid><surname>B</surname></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        Author second = a.getAuthors().stream().filter(au -> au.getSeq() == 2).findFirst().orElseThrow();
+        assertTrue(second.getAfids().isEmpty(), "afids leaked from previous author");
+    }
+
+    @Test
+    void affiliationCityAndCountryDoNotLeak() throws Exception {
+        // Affiliation 1 has city/country; affiliation 2 omits both.
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <affiliation><afid>1</afid><affilname>First</affilname>"
+                + "    <affiliation-city>New York</affiliation-city>"
+                + "    <affiliation-country>United States</affiliation-country></affiliation>"
+                + "  <affiliation><afid>2</afid><affilname>Second</affilname></affiliation>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        Affiliation second = a.getAffiliations().stream().filter(af -> af.getAfid() == 2).findFirst().orElseThrow();
+        assertEquals("Second", second.getAffilname());
+        assertNull(second.getAffiliationCity(), "affiliationCity leaked from previous affiliation");
+        assertNull(second.getAffiliationCountry(), "affiliationCountry leaked from previous affiliation");
+    }
+
+    // ------------------------------------------------------------------
+    // Malformed numeric / attribute data must not throw
+    // ------------------------------------------------------------------
+
+    @Test
+    void nonNumericCitedByCountDoesNotThrow() throws Exception {
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <pubmed-id></pubmed-id>"
+                + "  <citedby-count>N/A</citedby-count>"
+                + "  <author seq=\"1\"><authid>1</authid><surname>X</surname></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        assertEquals(0L, a.getCitedByCount());
+        assertEquals(0L, a.getPubmedId());
+    }
+
+    @Test
+    void authorWithoutSeqAttributeDoesNotThrow() throws Exception {
+        String xml = "<search-results><entry>"
+                + "  <dc:identifier>SCOPUS_ID:1</dc:identifier>"
+                + "  <author><authid>111</authid><surname>NoSeq</surname></author>"
+                + "</entry></search-results>";
+
+        ScopusArticle a = parse(xml).get(0);
+        assertEquals(1, a.getAuthors().size());
+        assertEquals("NoSeq", a.getAuthors().get(0).getSurname());
+    }
+
+    // ------------------------------------------------------------------
+    // Author order is preserved (document order), not HashMap order
+    // ------------------------------------------------------------------
+
+    @Test
+    void authorOrderIsPreserved() throws Exception {
+        StringBuilder xml = new StringBuilder("<search-results><entry>"
+                + "<dc:identifier>SCOPUS_ID:1</dc:identifier>");
+        for (int s = 1; s <= 12; s++) {
+            xml.append("<author seq=\"").append(s).append("\"><authid>").append(s)
+               .append("</authid><surname>S").append(s).append("</surname></author>");
+        }
+        xml.append("</entry></search-results>");
+
+        ScopusArticle a = parse(xml.toString()).get(0);
+        assertEquals(12, a.getAuthors().size());
+        for (int i = 0; i < 12; i++) {
+            assertEquals(i + 1, a.getAuthors().get(i).getSeq(),
+                    "authors must be returned in document/seq order");
+        }
     }
 }

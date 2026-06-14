@@ -1,7 +1,7 @@
 package reciter.scopus.xmlparser;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,58 +16,44 @@ import reciter.model.scopus.Author;
 import reciter.model.scopus.ScopusArticle;
 
 /**
- * The {@code ScopusXmlHandler} class parses Scopus XML.
+ * The {@code ScopusXmlHandler} class parses a batch of Scopus Search API XML entries
+ * into {@link ScopusArticle} objects.
+ *
+ * <p>Text content is accumulated in a {@link StringBuilder} ({@link #buf}) while inside a
+ * captured leaf element and consumed in {@link #endElement}. SAX may invoke
+ * {@link #characters} multiple times for a single element — when the text contains XML
+ * entities ({@code &amp;}, {@code &lt;}, {@code &#48;}) or exceeds the parser's character
+ * buffer — so accumulating (rather than overwriting on each callback) is required to avoid
+ * silently truncating titles, journal names, and author names.</p>
+ *
+ * <p>Per-entry, per-author, and per-affiliation fields are reset when the corresponding
+ * element <em>starts</em>, so a sparse later element (e.g. an author with no
+ * {@code <surname>}, or an entry with no {@code <pubmed-id>}) can never inherit a value
+ * from the preceding one.</p>
  *
  * @author jil3004
- *
  */
 public class ScopusXmlHandler extends DefaultHandler {
 
 	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusXmlHandler.class);
 
+	private static final String SCOPUS_ID_PREFIX = "SCOPUS_ID:";
+
+	/** Accumulates character data for the leaf element currently being captured. */
+	private final StringBuilder buf = new StringBuilder();
+	/** True while inside a leaf element whose text we want to keep. */
+	private boolean capturing;
+
+	/** Context flags — at most one of these is true at any time within an entry. */
+	private boolean bAffiliation;
+	private boolean bAuthor;
+	private boolean bError;
+
 	private int errorEntryCount;
 
 	private ScopusArticle scopusArticle;
-	
-	private boolean bScopusDocId;
 
-	private boolean bAffiliation;
-	private boolean bAfid;
-	private boolean bAffilname;
-	private boolean bAffiliationCity;
-	private boolean bAffiliationCountry;
-
-	private boolean bPubmedId;
-	private boolean bDoi;
-	private boolean bSubtype;
-	private boolean bSubTypeDescription;
-	private boolean bTitle;
-	private boolean bPublicationName;
-	private boolean bCoverDate;
-	private boolean bCoverDisplayDate;
-	private boolean bIssn;
-	private boolean bEissn;
-	private boolean bVolume;
-	private boolean bIssueIdentifier;
-	private boolean bPageRange;
-	
-	private boolean bCitedByCount;
-
-	private boolean bAuthor;
-	private boolean bAuthid;
-	private boolean bAuthname;
-	private boolean bSurname;
-	private boolean bGivenName;
-	private boolean bInitials;
-	private boolean bAfids;
-	private boolean bError;
-
-	private int afid;
-	private StringBuilder affilname = new StringBuilder();
-	private String affiliationCity;
-	private String affiliationCountry;
-	private Map<Integer, Affiliation> affiliations = new HashMap<>();
-	
+	// Per-entry fields.
 	private String scopusDocId;
 	private long pubmedId;
 	private String doi;
@@ -83,6 +69,15 @@ public class ScopusXmlHandler extends DefaultHandler {
 	private String issueIdentifier;
 	private String pageRange;
 	private long citedByCount;
+
+	// Per-affiliation fields.
+	private int afid;
+	private String affilname;
+	private String affiliationCity;
+	private String affiliationCountry;
+	private final Map<Integer, Affiliation> affiliations = new LinkedHashMap<>();
+
+	// Per-author fields.
 	private Integer seq;
 	private long authid;
 	private String authname;
@@ -90,430 +85,284 @@ public class ScopusXmlHandler extends DefaultHandler {
 	private String givenName;
 	private String initials;
 	private List<Integer> afids;
-	private Map<Integer, Author> authors = new HashMap<>();
-	
-	private List<ScopusArticle> scopusArticles = new ArrayList<>();
+	private final Map<Integer, Author> authors = new LinkedHashMap<>();
+
+	private final List<ScopusArticle> scopusArticles = new ArrayList<>();
 
 	@Override
 	public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
-		// <affiliation>
-		if (qName.equalsIgnoreCase("affiliation")) {
+		// Any new element ends the previous leaf's capture and resets the buffer.
+		buf.setLength(0);
+		capturing = false;
+
+		if (qName.equalsIgnoreCase("entry")) {
+			resetEntry();
+		} else if (qName.equalsIgnoreCase("affiliation")) {
 			bAffiliation = true;
-		}
-
-		if (bAffiliation) {
-			if (qName.equalsIgnoreCase("afid")) {
-				afid = 0;
-				bAfid = true;
-			}
-			if (qName.equalsIgnoreCase("affilname")) {
-				affilname.setLength(0);
-				bAffilname = true;
-			}
-			if (qName.equalsIgnoreCase("affiliation-city")) {
-				bAffiliationCity = true;
-			}
-			if (qName.equalsIgnoreCase("affiliation-country")) {
-				bAffiliationCountry = true;
-			}
-		}
-		// end </affiliation> tag.
-		
-		//<dc:identifier>
-		if(qName.equalsIgnoreCase("dc:identifier")) {
-			bScopusDocId = true;
-		}
-
-		// <pubmed-id>
-		if (qName.equalsIgnoreCase("pubmed-id")) {
-			bPubmedId = true;
-		}
-		// end </pubmed-id> tag.
-
-		// <prism:doi>
-		if (qName.equalsIgnoreCase("prism:doi")) {
-			bDoi = true;
-		}
-		
-		//<subtype>
-		if (qName.equals("subtype")) {
-			bSubtype = true;
-		}
-		
-		//<subtypeDescription>
-		if (qName.equals("subtypeDescription")) {
-			bSubTypeDescription = true;
-		}
-		
-		//<citedby-count>
-		if (qName.equals("citedby-count")) {
-			bCitedByCount = true;
-		}
-		
-		if (qName.equals("dc:title")) {
-			bTitle = true;
-		}
-		
-		if (qName.equals("prism:publicationName")) {
-			bPublicationName = true;
-		}
-		
-		if (qName.equals("prism:coverDate")) {
-			bCoverDate = true;
-		}
-		
-		if (qName.equals("prism:coverDisplayDate")) {
-			bCoverDisplayDate = true;
-		}
-		
-		if (qName.equals("prism:issn")) {
-			bIssn = true;
-		}
-		
-		if (qName.equals("prism:eIssn")) {
-			bEissn = true;
-		}
-		
-		if (qName.equals("prism:volume")) {
-			bVolume = true;
-		}
-		
-		if (qName.equals("prism:issueIdentifier")) {
-			bIssueIdentifier = true;
-		}
-		
-		if (qName.equals("prism:pageRange")) {
-			bPageRange = true;
-		}
-
-		// <author>
-		if (qName.equalsIgnoreCase("author")) {
+			resetAffiliation();
+		} else if (qName.equalsIgnoreCase("author")) {
 			bAuthor = true;
-			seq = Integer.parseInt(attributes.getValue("seq"));
-			afids = new ArrayList<>();
-		}
-		if (bAuthor) {
-			if (qName.equalsIgnoreCase("authid")) {
-				bAuthid = true;
-			}
-			if (qName.equalsIgnoreCase("authname")) {
-				bAuthname = true;
-			}
-			if (qName.equalsIgnoreCase("surname")) {
-				bSurname = true;
-			}
-			if (qName.equalsIgnoreCase("given-name")) {
-				bGivenName = true;
-			}
-			if (qName.equalsIgnoreCase("initials")) {
-				bInitials = true;
-			}
-			if (qName.equalsIgnoreCase("afid")) {
-				bAfids = true;
-			}
-		}
-		// end </author> tag.
-
-		// <error>
-		if (qName.equalsIgnoreCase("error")) {
+			resetAuthor();
+			seq = parseIntOrDefault(attributes.getValue("seq"), authors.size() + 1);
+		} else if (qName.equalsIgnoreCase("error")) {
 			bError = true;
+		} else if (isCapturedLeaf(qName)) {
+			capturing = true;
 		}
-		// end </error> tag.
 	}
 
 	@Override
 	public void characters(char[] ch, int start, int length) throws SAXException {
-
-		if (bAffiliation) {
-			if (bAfid) {
-				afid = Integer.parseInt(new String(ch, start, length));
-			} 
-			if (bAffilname) {
-				affilname.append(ch, start, length);
-			}
-			if (bAffiliationCity) {
-				affiliationCity = new String(ch, start, length);
-			}
-			if (bAffiliationCountry) {
-				affiliationCountry = new String(ch, start, length);
-			}
-		}
-		
-		if (bScopusDocId) {
-			scopusDocId = new String(ch, start, length).replaceAll("SCOPUS_ID:", "");
-		}
-
-		if (bDoi) {
-			doi = new String(ch, start, length);
-		}
-
-		if (bPubmedId) {
-			pubmedId = Long.parseLong(new String(ch, start, length));
-		}
-		
-		if (bSubtype) {
-			subType = new String(ch, start, length);
-		}
-		
-		if (bSubTypeDescription) {
-			subTypeDescription = new String(ch, start, length);
-		}
-		
-		if (bTitle) {
-			title = new String(ch, start, length);
-		}
-		
-		if (bPublicationName) {
-			publicationName = new String(ch, start, length);
-		}
-		
-		if (bCoverDate) {
-			coverDate = new String(ch, start, length);
-		}
-		
-		if (bCoverDisplayDate) {
-			coverDisplayDate = new String(ch, start, length);
-		}
-		
-		if (bIssn) {
-			issn = new String(ch, start, length);
-		}
-		
-		if (bEissn) {
-			eissn = new String(ch, start, length);
-		}
-		
-		if (bVolume) {
-			volume = new String(ch, start, length);
-		}
-		
-		if (bIssueIdentifier) {
-			issueIdentifier = new String(ch, start, length);
-		}
-		
-		if (bPageRange) {
-			pageRange = new String(ch, start, length);
-		}
-		
-		if (bCitedByCount) {
-			citedByCount = Long.parseLong(new String(ch, start, length));
-		}
-
-		if (bAuthor) {
-			if (bAuthid) {
-				authid = Long.parseLong(new String(ch, start, length));
-			}
-			if (bAuthname) {
-				authname = new String(ch, start, length);
-			}
-			if (bSurname) {
-				surname = new String(ch, start, length);
-			}
-			if (bGivenName) {
-				givenName = new String(ch, start, length);
-			}
-			if (bInitials) {
-				initials = new String(ch, start, length);
-			}
-			if (bAfids) {
-				int afid = Integer.parseInt(new String(ch, start, length));
-				if (afid != 0
-						&&
-						!afids.contains(afid)) {
-					afids.add(afid);
-				}
-			}
+		if (capturing) {
+			buf.append(ch, start, length);
 		}
 	}
 
 	@Override
 	public void endElement(String uri, String localName, String qName) throws SAXException {
-
-		if (qName.equalsIgnoreCase("affiliation") && bAffiliation) {
-			if (afid != 0) {
-				affiliations.put(afid,
-						Affiliation.builder()
-								.affiliationCity(affiliationCity)
-								.afid(afid)
-								.affilname(affilname.toString())
-								.affiliationCountry(affiliationCountry)
-								.build());
+		if (qName.equalsIgnoreCase("entry")) {
+			endEntry();
+			capturing = false;
+			return;
+		}
+		if (qName.equalsIgnoreCase("affiliation")) {
+			if (bAffiliation && afid != 0) {
+				affiliations.put(afid, Affiliation.builder()
+						.afid(afid)
+						.affilname(affilname)
+						.affiliationCity(affiliationCity)
+						.affiliationCountry(affiliationCountry)
+						.build());
 			}
 			bAffiliation = false;
+			capturing = false;
+			return;
 		}
-
-		// <affiliation> child tags need to be checked for empty contents.
-		// Check for empty XML tags: ie: <afid />
-		if (bAffiliation) {
-			if (qName.equalsIgnoreCase("afid")) {
-				bAfid = false;
-			}
-			if (qName.equalsIgnoreCase("affilname")) {
-				bAffilname = false;
-			}
-			if (qName.equalsIgnoreCase("affiliation-city")) {
-				bAffiliationCity = false;
-			}
-			if (qName.equalsIgnoreCase("affiliation-country")) {
-				bAffiliationCountry = false;
-			}
-		}
-		
-		if(qName.equalsIgnoreCase("dc:identifier")) {
-			bScopusDocId = false;
-		}
-		
-		if (qName.equalsIgnoreCase("pubmed-id")) {
-			bPubmedId = false;
-		}
-
-		if (qName.equalsIgnoreCase("prism:doi")) {
-			bDoi = false;
-		}
-		
-		if (qName.equals("subtype")) {
-			bSubtype = false;
-		}
-		
-		if (qName.equals("subtypeDescription")) {
-			bSubTypeDescription = false;
-		}
-		
-		if (qName.equals("dc:title")) {
-			bTitle = false;
-		}
-		
-		if (qName.equals("prism:publicationName")) {
-			bPublicationName = false;
-		}
-		
-		if (qName.equals("prism:coverDate")) {
-			bCoverDate = false;
-		}
-		
-		if (qName.equals("prism:coverDisplayDate")) {
-			bCoverDisplayDate = false;
-		}
-		
-		if (qName.equals("prism:issn")) {
-			bIssn = false;
-		}
-		
-		if (qName.equals("prism:eIssn")) {
-			bEissn = false;
-		}
-		
-		if (qName.equals("prism:volume")) {
-			bVolume = false;
-		}
-		
-		if (qName.equals("prism:issueIdentifier")) {
-			bIssueIdentifier = false;
-		}
-		
-		if (qName.equals("prism:pageRange")) {
-			bPageRange = false;
-		}
-		
-		if (qName.equals("citedby-count")) {
-			bCitedByCount = false;
-		}
-
-		if (qName.equalsIgnoreCase("author") && bAuthor) {
-			if (authid != 0) {
-				authors.put(seq,
-						Author.builder()
-								.seq(seq)
-								.afids(afids)
-								.authid(authid)
-								.authname(authname)
-								.surname(surname)
-								.givenName(givenName)
-								.initials(initials).build());
+		if (qName.equalsIgnoreCase("author")) {
+			if (bAuthor && authid != 0) {
+				authors.put(seq, Author.builder()
+						.seq(seq)
+						.afids(afids)
+						.authid(authid)
+						.authname(authname)
+						.surname(surname)
+						.givenName(givenName)
+						.initials(initials)
+						.build());
 			}
 			bAuthor = false;
+			capturing = false;
+			return;
 		}
 
-		if (bAuthor) {
-			if (qName.equalsIgnoreCase("authid")) {
-				bAuthid = false;
+		// Leaf elements: assign the accumulated text to the right field.
+		String text = buf.toString();
+		if (qName.equalsIgnoreCase("dc:identifier")) {
+			scopusDocId = text.replace(SCOPUS_ID_PREFIX, "");
+		} else if (qName.equalsIgnoreCase("pubmed-id")) {
+			pubmedId = parseLongOrDefault(text, 0L);
+		} else if (qName.equalsIgnoreCase("prism:doi")) {
+			doi = text;
+		} else if (qName.equalsIgnoreCase("subtype")) {
+			subType = text;
+		} else if (qName.equalsIgnoreCase("subtypeDescription")) {
+			subTypeDescription = text;
+		} else if (qName.equalsIgnoreCase("dc:title")) {
+			title = text;
+		} else if (qName.equalsIgnoreCase("prism:publicationName")) {
+			publicationName = text;
+		} else if (qName.equalsIgnoreCase("prism:coverDate")) {
+			coverDate = text;
+		} else if (qName.equalsIgnoreCase("prism:coverDisplayDate")) {
+			coverDisplayDate = text;
+		} else if (qName.equalsIgnoreCase("prism:issn")) {
+			issn = text;
+		} else if (qName.equalsIgnoreCase("prism:eIssn")) {
+			eissn = text;
+		} else if (qName.equalsIgnoreCase("prism:volume")) {
+			volume = text;
+		} else if (qName.equalsIgnoreCase("prism:issueIdentifier")) {
+			issueIdentifier = text;
+		} else if (qName.equalsIgnoreCase("prism:pageRange")) {
+			pageRange = text;
+		} else if (qName.equalsIgnoreCase("citedby-count")) {
+			citedByCount = parseLongOrDefault(text, 0L);
+		} else if (qName.equalsIgnoreCase("affilname")) {
+			if (bAffiliation) {
+				affilname = text;
 			}
-			if (qName.equalsIgnoreCase("authname")) {
-				bAuthname = false;
+		} else if (qName.equalsIgnoreCase("affiliation-city")) {
+			if (bAffiliation) {
+				affiliationCity = text;
 			}
-			if (qName.equalsIgnoreCase("surname")) {
-				bSurname = false;
+		} else if (qName.equalsIgnoreCase("affiliation-country")) {
+			if (bAffiliation) {
+				affiliationCountry = text;
 			}
-			if (qName.equalsIgnoreCase("given-name")) {
-				bGivenName = false;
+		} else if (qName.equalsIgnoreCase("authid")) {
+			if (bAuthor) {
+				authid = parseLongOrDefault(text, 0L);
 			}
-			if (qName.equalsIgnoreCase("initials")) {
-				bInitials = false;
+		} else if (qName.equalsIgnoreCase("authname")) {
+			if (bAuthor) {
+				authname = text;
 			}
-			if (qName.equalsIgnoreCase("afid")) {
-				bAfids = false;
+		} else if (qName.equalsIgnoreCase("surname")) {
+			if (bAuthor) {
+				surname = text;
+			}
+		} else if (qName.equalsIgnoreCase("given-name")) {
+			if (bAuthor) {
+				givenName = text;
+			}
+		} else if (qName.equalsIgnoreCase("initials")) {
+			if (bAuthor) {
+				initials = text;
+			}
+		} else if (qName.equalsIgnoreCase("afid")) {
+			// <afid> means the affiliation's own id inside <affiliation>, but an
+			// author-to-affiliation reference inside <author>.
+			if (bAuthor) {
+				int ref = parseIntOrDefault(text, 0);
+				if (ref != 0 && !afids.contains(ref)) {
+					afids.add(ref);
+				}
+			} else if (bAffiliation) {
+				afid = parseIntOrDefault(text, 0);
 			}
 		}
 
-		// Check for error entry. Return null.
-		if (qName.equalsIgnoreCase("entry")) {
-			if (bError) {
-				errorEntryCount++;
-				slf4jLogger.warn("Scopus returned error entry (total errors in this batch: {})", errorEntryCount);
-				scopusArticle = null;
-				bError = false;
-			} else {
-				List<Affiliation> affiliationList = new ArrayList<>();
-				List<Author> authorList = new ArrayList<>();
-				for (Affiliation affiliation : affiliations.values()) {
-					affiliationList.add(affiliation);
-				}
-				for (Author author : authors.values()) {
-					authorList.add(author);
-				}
-				scopusArticle = ScopusArticle.builder()
-						.scopusDocId(scopusDocId)
-						.pubmedId(pubmedId)
-						.affiliations(affiliationList)
-						.doi(doi)
-						.subType(subType)
-						.subTypeDescription(subTypeDescription)
-						.title(title)
-						.publicationName(publicationName)
-						.coverDate(coverDate)
-						.coverDisplayDate(coverDisplayDate)
-						.issn(issn)
-						.eIssn(eissn)
-						.volume(volume)
-						.issueIdentifier(issueIdentifier)
-						.pageRange(pageRange)
-						.citedByCount(citedByCount)
-						.authors(authorList).build();
-				scopusArticles.add(scopusArticle);
-				// Reset all per-entry fields to prevent cross-contamination between entries.
-				// Previously only doi was reset; pubmedId (and others) could leak from entry N
-				// to entry N+1 when the latter lacked a <pubmed-id> tag — particularly dangerous
-				// in DOI-fallback queries where Scopus entries may genuinely lack a PubMed ID.
-				scopusArticle = null;
-				scopusDocId = null;
-				pubmedId = 0;
-				doi = null;
-				subType = null;
-				subTypeDescription = null;
-				title = null;
-				publicationName = null;
-				coverDate = null;
-				coverDisplayDate = null;
-				issn = null;
-				eissn = null;
-				volume = null;
-				issueIdentifier = null;
-				pageRange = null;
-				citedByCount = 0;
-				affiliations.clear();
-				authors.clear();
-				bError = false;
-			}
+		capturing = false;
+	}
+
+	private void endEntry() {
+		if (bError) {
+			errorEntryCount++;
+			slf4jLogger.warn("Scopus returned error entry (total errors in this batch: {})", errorEntryCount);
+			scopusArticle = null;
+			bError = false;
+			return;
+		}
+		scopusArticle = ScopusArticle.builder()
+				.scopusDocId(scopusDocId)
+				.pubmedId(pubmedId)
+				.affiliations(new ArrayList<>(affiliations.values()))
+				.doi(doi)
+				.subType(subType)
+				.subTypeDescription(subTypeDescription)
+				.title(title)
+				.publicationName(publicationName)
+				.coverDate(coverDate)
+				.coverDisplayDate(coverDisplayDate)
+				.issn(issn)
+				.eIssn(eissn)
+				.volume(volume)
+				.issueIdentifier(issueIdentifier)
+				.pageRange(pageRange)
+				.citedByCount(citedByCount)
+				.authors(new ArrayList<>(authors.values()))
+				.build();
+		scopusArticles.add(scopusArticle);
+	}
+
+	private void resetEntry() {
+		bError = false;
+		bAffiliation = false;
+		bAuthor = false;
+		scopusDocId = null;
+		pubmedId = 0;
+		doi = null;
+		subType = null;
+		subTypeDescription = null;
+		title = null;
+		publicationName = null;
+		coverDate = null;
+		coverDisplayDate = null;
+		issn = null;
+		eissn = null;
+		volume = null;
+		issueIdentifier = null;
+		pageRange = null;
+		citedByCount = 0;
+		affiliations.clear();
+		authors.clear();
+		resetAffiliation();
+		resetAuthor();
+	}
+
+	private void resetAffiliation() {
+		afid = 0;
+		affilname = null;
+		affiliationCity = null;
+		affiliationCountry = null;
+	}
+
+	private void resetAuthor() {
+		seq = null;
+		authid = 0;
+		authname = null;
+		surname = null;
+		givenName = null;
+		initials = null;
+		afids = new ArrayList<>();
+	}
+
+	private static boolean isCapturedLeaf(String qName) {
+		return qName.equalsIgnoreCase("dc:identifier")
+				|| qName.equalsIgnoreCase("pubmed-id")
+				|| qName.equalsIgnoreCase("prism:doi")
+				|| qName.equalsIgnoreCase("subtype")
+				|| qName.equalsIgnoreCase("subtypeDescription")
+				|| qName.equalsIgnoreCase("dc:title")
+				|| qName.equalsIgnoreCase("prism:publicationName")
+				|| qName.equalsIgnoreCase("prism:coverDate")
+				|| qName.equalsIgnoreCase("prism:coverDisplayDate")
+				|| qName.equalsIgnoreCase("prism:issn")
+				|| qName.equalsIgnoreCase("prism:eIssn")
+				|| qName.equalsIgnoreCase("prism:volume")
+				|| qName.equalsIgnoreCase("prism:issueIdentifier")
+				|| qName.equalsIgnoreCase("prism:pageRange")
+				|| qName.equalsIgnoreCase("citedby-count")
+				|| qName.equalsIgnoreCase("afid")
+				|| qName.equalsIgnoreCase("affilname")
+				|| qName.equalsIgnoreCase("affiliation-city")
+				|| qName.equalsIgnoreCase("affiliation-country")
+				|| qName.equalsIgnoreCase("authid")
+				|| qName.equalsIgnoreCase("authname")
+				|| qName.equalsIgnoreCase("surname")
+				|| qName.equalsIgnoreCase("given-name")
+				|| qName.equalsIgnoreCase("initials");
+	}
+
+	private long parseLongOrDefault(String value, long fallback) {
+		if (value == null) {
+			return fallback;
+		}
+		String trimmed = value.trim();
+		if (trimmed.isEmpty()) {
+			return fallback;
+		}
+		try {
+			return Long.parseLong(trimmed);
+		} catch (NumberFormatException e) {
+			slf4jLogger.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
+			return fallback;
+		}
+	}
+
+	private int parseIntOrDefault(String value, int fallback) {
+		if (value == null) {
+			return fallback;
+		}
+		String trimmed = value.trim();
+		if (trimmed.isEmpty()) {
+			return fallback;
+		}
+		try {
+			return Integer.parseInt(trimmed);
+		} catch (NumberFormatException e) {
+			slf4jLogger.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
+			return fallback;
 		}
 	}
 
