@@ -32,6 +32,12 @@ public class ScopusController {
     /** Identifier types this service understands (compared case-insensitively). */
     static final Set<String> ALLOWED_TYPES = Set.of("pmid", "doi", "scopus-id", "af-id");
 
+    private final ScopusArticleRetriever scopusArticleRetriever;
+
+    public ScopusController(ScopusArticleRetriever scopusArticleRetriever) {
+        this.scopusArticleRetriever = scopusArticleRetriever;
+    }
+
     @ApiOperation(value = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)", response = List.class)
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Successfully retrieved list"),
@@ -46,7 +52,6 @@ public class ScopusController {
         validate(scopusQuery);
         int size = scopusQuery.getQuery().size();
         slf4jLogger.info("calling retrieve with pmids size=[" + size + "]");
-        ScopusArticleRetriever scopusArticleRetriever = new ScopusArticleRetriever();
         List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
         slf4jLogger.info("finished retrieving with pmids size=[" + size + "]");
         return ResponseEntity.ok(scopusArticles);
