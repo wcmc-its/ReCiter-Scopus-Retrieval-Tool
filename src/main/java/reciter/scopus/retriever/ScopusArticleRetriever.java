@@ -77,10 +77,12 @@ public class ScopusArticleRetriever {
 
 		List<RetryerCallable<List<ScopusArticle>>> callables = new ArrayList<>();
 		
+		// Retry only on a null result or a transient I/O error (timeouts, connection
+		// resets). Deterministic failures (e.g. a malformed response) are not retried —
+		// re-fetching the same URL would fail identically and just waste 10 attempts.
 		Retryer<List<ScopusArticle>> retryer = RetryerBuilder.<List<ScopusArticle>>newBuilder()
                 .retryIfResult(Predicates.<List<ScopusArticle>>isNull())
                 .retryIfExceptionOfType(IOException.class)
-                .retryIfRuntimeException()
                 .withWaitStrategy(WaitStrategies.fibonacciWait(100L, 2L, TimeUnit.MINUTES))
                 .withStopStrategy(StopStrategies.stopAfterAttempt(10))
                 .build();
@@ -114,6 +116,11 @@ public class ScopusArticleRetriever {
 			}).forEach(list::add);
 		} catch (InterruptedException e) {
 			slf4jLogger.error("Unable to invoke callable.", e);
+			Thread.currentThread().interrupt();
+		} finally {
+			// The pool is created per request; shut it down so its worker threads do not
+			// accumulate (a hung Scopus call would otherwise keep them alive indefinitely).
+			executor.shutdownNow();
 		}
 
 		List<ScopusArticle> results = new ArrayList<>();
