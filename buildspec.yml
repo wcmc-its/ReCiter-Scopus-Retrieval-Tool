@@ -16,9 +16,9 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
-      - cp target/reciter-scopus-retrieval-tool-1.1.0.jar .
+      - cp target/reciter-scopus-retrieval-tool-3.0.0.jar .
 artifacts:
   files:
-    - reciter-scopus-retrieval-tool-1.1.0.jar
+    - reciter-scopus-retrieval-tool-3.0.0.jar
     - .ebextensions/**/* 
     - Procfile
