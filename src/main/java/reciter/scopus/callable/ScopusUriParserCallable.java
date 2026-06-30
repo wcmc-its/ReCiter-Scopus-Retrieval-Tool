@@ -20,7 +20,7 @@ import reciter.scopus.xmlparser.ScopusXmlHandler;
 
 public class ScopusUriParserCallable implements Callable<List<ScopusArticle>> {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusUriParserCallable.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusUriParserCallable.class);
 	
 	private static final String INST_TOKEN = System.getenv("SCOPUS_INST_TOKEN");
 	private static final String API_KEY = System.getenv("SCOPUS_API_KEY");
@@ -35,7 +35,7 @@ public class ScopusUriParserCallable implements Callable<List<ScopusArticle>> {
 	
 	public List<ScopusArticle> parse(String uri) throws ParserConfigurationException, SAXException, IOException {
 		URL url = new URL(uri);
-		slf4jLogger.info(url.toString());
+		log.info(url.toString());
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestMethod("GET");
 		conn.setRequestProperty("Accept", "application/xml");
@@ -47,7 +47,7 @@ public class ScopusUriParserCallable implements Callable<List<ScopusArticle>> {
 		SAXParser saxParser = SAXParserFactory.newInstance().newSAXParser();
 		saxParser.parse(source, xmlHandler);
 		List<ScopusArticle> scopusArticles = xmlHandler.getScopusArticles();
-		slf4jLogger.info("Number of Scopus article retrieved=[" + scopusArticles.size() + "] for query=[" + uri + "].");
+		log.info("Number of Scopus articles retrieved=[{}] for query=[{}].",scopusArticles.size(), uri);
 		return scopusArticles;
 	}
 	

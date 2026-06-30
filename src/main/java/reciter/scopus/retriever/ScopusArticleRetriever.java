@@ -25,7 +25,7 @@ import reciter.scopus.xmlparser.ScopusXmlHandler;
 
 public class ScopusArticleRetriever {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusArticleRetriever.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusArticleRetriever.class);
 
 	/**
 	 * Scopus retrieval threshold.
@@ -43,7 +43,7 @@ public class ScopusArticleRetriever {
 	 * @return
 	 */
 	public List<ScopusArticle> retrieveScopus(List<Object> pmids, String type) {
-		slf4jLogger.info("Pmids:" + pmids);
+		log.info("Pmids: {}",pmids);
 		List<String> pmidQueries = new ArrayList<>();
 		if (pmids.size() == 1) {
 			pmidQueries.add(type + "(" + pmids.get(0) + ")");
@@ -113,7 +113,7 @@ public class ScopusArticleRetriever {
 				}
 			}).forEach(list::add);
 		} catch (InterruptedException e) {
-			slf4jLogger.error("Unable to invoke callable.", e);
+			log.error("Unable to invoke callable.", e);
 		}
 
 		List<ScopusArticle> results = new ArrayList<>();

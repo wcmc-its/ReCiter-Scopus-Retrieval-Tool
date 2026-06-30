@@ -23,7 +23,7 @@ import reciter.scopus.retriever.ScopusArticleRetriever;
 @RequestMapping("/scopus")
 @Tag(name="ScopusController", description ="Querying Scopus with PMID, SCOPUS-ID or DOI")
 public class ScopusController {
-    private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusController.class);
+    private static final Logger log = LoggerFactory.getLogger(ScopusController.class);
 
     @Operation(summary = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)")
     @ApiResponses(value = {
@@ -34,10 +34,10 @@ public class ScopusController {
     })
     @PostMapping(value = "/query/", produces = "application/json")
     public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody ScopusQuery scopusQuery) {
-        slf4jLogger.info("calling retrieve with pmids size=[" + scopusQuery.getQuery().size() + "]");
+    	log.info("Calling retrieve with PMIDs size=[{}]", scopusQuery.getQuery().size());
         ScopusArticleRetriever scopusArticleRetriever = new ScopusArticleRetriever();
         List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
-        slf4jLogger.info("finished retrieving with pmids size=[" + scopusQuery.getQuery().size() + "]");
+        log.info("Finished retrieving with PMIDs size=[{}]", scopusQuery.getQuery().size());
         return ResponseEntity.ok(scopusArticles);
     }
 }
