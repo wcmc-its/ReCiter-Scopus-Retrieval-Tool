@@ -21,5 +21,7 @@ services:
     environment:
       - SCOPUS_API_KEY=${SCOPUS_API_KEY}
       - SCOPUS_INST_TOKEN=${SCOPUS_INST_TOKEN}
+
     expose:
       - "5000"
+    command: mvn clean spring-boot:run

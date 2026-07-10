@@ -9,51 +9,51 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import reciter.model.scopus.ScopusArticle;
 import reciter.model.scopus.ScopusQuery;
 import reciter.scopus.retriever.ScopusArticleRetriever;
 
-@Controller
+@RestController
 @RequestMapping("/scopus")
-@Api(value="ScopusController", tags = {"Querying Scopus with PMID, SCOPUS-ID or DOI"})
+@Tag(name="ScopusController", description ="Querying Scopus with PMID, SCOPUS-ID or DOI")
 public class ScopusController {
-    private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusController.class);
-
+	
+    private static final Logger log = LoggerFactory.getLogger(ScopusController.class);
+    
     /** Identifier types this service understands (compared case-insensitively). */
     static final Set<String> ALLOWED_TYPES = Set.of("pmid", "doi", "scopus-id", "af-id");
-
+    
     private final ScopusArticleRetriever scopusArticleRetriever;
 
     public ScopusController(ScopusArticleRetriever scopusArticleRetriever) {
         this.scopusArticleRetriever = scopusArticleRetriever;
     }
+    
 
-    @ApiOperation(value = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)", response = List.class)
+    @Operation(summary = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)")
     @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Successfully retrieved list"),
-            @ApiResponse(code = 400, message = "The request body is missing required fields or has an unsupported type"),
-            @ApiResponse(code = 401, message = "You are not authorized to view the resource"),
-            @ApiResponse(code = 403, message = "Accessing the resource you were trying to reach is forbidden"),
-            @ApiResponse(code = 404, message = "The resource you were trying to reach is not found")
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved list"),
+            @ApiResponse(responseCode = "400", description = "The request body is missing required fields or has an unsupported type"),
+            @ApiResponse(responseCode = "401", description = "You are not authorized to view the resource"),
+            @ApiResponse(responseCode = "403", description = "Accessing the resource you were trying to reach is forbidden"),
+            @ApiResponse(responseCode = "404", description = "The resource you were trying to reach is not found")
     })
     @PostMapping(value = "/query/", produces = "application/json")
-    @ResponseBody
     public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody ScopusQuery scopusQuery) {
-        validate(scopusQuery);
-        int size = scopusQuery.getQuery().size();
-        slf4jLogger.info("calling retrieve with pmids size=[" + size + "]");
+    	validate(scopusQuery);
+    	int size = scopusQuery.getQuery() == null ? 0 : scopusQuery.getQuery().size();
+    	log.info("Calling retrieve with PMIDs size=[{}]", size);
         List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
-        slf4jLogger.info("finished retrieving with pmids size=[" + size + "]");
+        log.info("Finished retrieving with PMIDs size=[{}]", scopusQuery.getQuery().size());
         return ResponseEntity.ok(scopusArticles);
     }
 
