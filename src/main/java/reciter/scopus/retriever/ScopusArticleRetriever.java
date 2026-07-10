@@ -20,7 +20,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.annotation.PreDestroy;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -31,6 +30,8 @@ import com.github.rholder.retry.RetryerBuilder;
 import com.github.rholder.retry.StopStrategies;
 import com.github.rholder.retry.WaitStrategies;
 import com.google.common.base.Predicates;
+
+import jakarta.annotation.PreDestroy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +58,7 @@ import reciter.scopus.xmlparser.ScopusXmlHandler;
 @Service
 public class ScopusArticleRetriever {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusArticleRetriever.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusArticleRetriever.class);
 
 	/**
 	 * Maximum number of identifiers per Scopus request. Each identifier (PMID/DOI/Scopus-ID)
@@ -94,7 +95,7 @@ public class ScopusArticleRetriever {
 				.withStopStrategy(StopStrategies.stopAfterAttempt(10))
 				.build();
 		if (API_KEY == null || INST_TOKEN == null) {
-			slf4jLogger.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
+			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus requests will be rejected (401) until they are configured.");
 		}
 	}
@@ -105,7 +106,7 @@ public class ScopusArticleRetriever {
 	 * @return the articles that were successfully retrieved (partial if some batches failed)
 	 */
 	public List<ScopusArticle> retrieveScopus(List<Object> pmids, String type) {
-		slf4jLogger.info("Retrieving {} Scopus identifier(s) of type [{}]", pmids.size(), type);
+		log.info("Retrieving {} Scopus identifier(s) of type [{}]", pmids.size(), type);
 		List<String> pmidQueries = buildBatchQueries(pmids, type, SCOPUS_BATCH_SIZE);
 
 		List<Callable<List<ScopusArticle>>> callables = new ArrayList<>();
@@ -124,21 +125,21 @@ public class ScopusArticleRetriever {
 				} catch (ExecutionException e) {
 					// One batch failed after retries; keep the others rather than failing the
 					// whole request (the caller treats an exception as "no results at all").
-					slf4jLogger.error("A Scopus batch failed after retries; returning partial results.",
+					log.error("A Scopus batch failed after retries; returning partial results.",
 							e.getCause());
 				}
 			}
 		} catch (InterruptedException e) {
-			slf4jLogger.error("Interrupted while retrieving Scopus batches; returning partial results.", e);
+			log.error("Interrupted while retrieving Scopus batches; returning partial results.", e);
 			Thread.currentThread().interrupt();
 		}
-		slf4jLogger.info("Retrieved {} Scopus article(s) across {} batch(es).", results.size(), pmidQueries.size());
+		log.info("Retrieved {} Scopus article(s) across {} batch(es).", results.size(), pmidQueries.size());
 		return results;
 	}
 
 	private List<ScopusArticle> fetchAndParse(String url)
 			throws IOException, InterruptedException, ParserConfigurationException, SAXException {
-		slf4jLogger.info(url);
+		log.info(url);
 		HttpRequest.Builder builder = HttpRequest.newBuilder()
 				.uri(URI.create(url))
 				.timeout(REQUEST_TIMEOUT)
@@ -174,9 +175,9 @@ public class ScopusArticleRetriever {
 		List<ScopusArticle> articles = xmlHandler.getScopusArticles();
 		int errorCount = xmlHandler.getErrorEntryCount();
 		if (errorCount > 0) {
-			slf4jLogger.warn("Scopus batch had {} error entries (articles dropped) for query=[{}]", errorCount, url);
+			log.warn("Scopus batch had {} error entries (articles dropped) for query=[{}]", errorCount, url);
 		}
-		slf4jLogger.info("Number of Scopus article retrieved=[{}], errors=[{}] for query=[{}]",
+		log.info("Number of Scopus article retrieved=[{}], errors=[{}] for query=[{}]",
 				articles.size(), errorCount, url);
 		return articles;
 	}
@@ -211,7 +212,7 @@ public class ScopusArticleRetriever {
 			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 			factory.setXIncludeAware(false);
 		} catch (ParserConfigurationException | SAXNotRecognizedException | SAXNotSupportedException e) {
-			slf4jLogger.warn("Could not fully harden SAX parser factory against XXE: {}", e.getMessage());
+			log.warn("Could not fully harden SAX parser factory against XXE: {}", e.getMessage());
 		}
 		return factory;
 	}

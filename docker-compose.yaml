@@ -18,8 +18,12 @@ services:
     working_dir: /app
     # Credentials are read from the shell environment / an untracked .env file.
     # Never hardcode the Scopus API key or institutional token here.
-    environment:
-      - SCOPUS_API_KEY=${SCOPUS_API_KEY}
-      - SCOPUS_INST_TOKEN=${SCOPUS_INST_TOKEN}
+    #environment:
+     # - SCOPUS_API_KEY=${SCOPUS_API_KEY}
+     # - SCOPUS_INST_TOKEN=${SCOPUS_INST_TOKEN}
+    environment: 
+      - SCOPUS_API_KEY=xxxxxxxxxxxxx
+      - SCOPUS_INST_TOKEN=xxxxxxxxxx
     expose:
       - "5000"
+    command: mvn clean spring-boot:run

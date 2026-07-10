@@ -3,9 +3,9 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      java: corretto11
+      java: corretto17
     commands:
-      - kubectl version --short --client   
+      - kubectl version --client   
   pre_build:
       commands:
         # Fetch Docker credentials from AWS Secrets Manager
@@ -24,6 +24,7 @@ phases:
         - sed -i.bak -e 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$TAG"'@' kubernetes/k8-deployment.yaml
         - echo "${CODEBUILD_WEBHOOK_HEAD_REF}"
         - echo "${BRANCH}"
+        - echo "${AWS_REGION}"
         - |
           if expr "${BRANCH}" : ".*dev" >/dev/null; then
             sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-dev"'@' -e 's@APPNAME@'"reciter-scopus-dev"'@' -e 's@HPANAME@'"hpa-reciter-scopus-dev"'@' -e 's@ENVIRONMENT_LABEL@'"dev"'@' kubernetes/k8-deployment.yaml;
@@ -32,6 +33,10 @@ phases:
           if expr "${BRANCH}" : ".*master" >/dev/null; then
             sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-prod"'@'  -e 's@APPNAME@'"reciter-scopus-prod"'@' -e 's@HPANAME@'"hpa-reciter-scopus-prod"'@' -e 's@ENVIRONMENT_LABEL@'"prod"'@' kubernetes/k8-deployment.yaml;
           fi
+        - |
+          if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
+            sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-prod"'@' -e 's@APPNAME@'"reciter-scopus-prod"'@' -e 's@HPANAME@'"hpa-reciter-scopus-prod"'@' -e 's@ENVIRONMENT_LABEL@'"prod"'@' kubernetes/k8-deployment.yaml;
+          fi
         #- $(aws ecr get-login --no-include-email)
         - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
         - cat ./kubernetes/k8-deployment.yaml
@@ -39,7 +44,7 @@ phases:
     commands:
       - mvn clean install
       - |
-        if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null; then
+        if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null || expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
           docker build --tag $REPOSITORY_URI:$TAG .
           docker push $REPOSITORY_URI:$TAG
           # Log out from the Docker registry to clear credentials
@@ -51,4 +56,7 @@ phases:
         fi
         if expr "${BRANCH}" : ".*dev" >/dev/null; then
           kubectl set image deployment/reciter-scopus-dev reciter-scopus=$REPOSITORY_URI:$TAG -n reciter
+        fi
+        if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
+          kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME
         fi
