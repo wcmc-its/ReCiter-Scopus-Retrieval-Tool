@@ -115,8 +115,9 @@ spec:
         volumeMounts:
           - name:  nginx-conf
             mountPath:  /etc/nginx/conf.d
-      nodeSelector:
-        lifecycle: Ec2Spot
+      # No nodeSelector: the old `lifecycle: Ec2Spot` label no longer exists on any node
+      # in this cluster, so pinning to it left the pod Unschedulable. Let the scheduler
+      # place it on available capacity, as the running deployment already did.
       volumes:
         - name: nginx-conf  
           configMap:
