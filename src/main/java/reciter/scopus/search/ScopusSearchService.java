@@ -39,6 +39,13 @@ public class ScopusSearchService {
 	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
 	private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
 
+	// Elsevier intermittently resets the connection under load; retry the transient I/O a
+	// few times (short backoff) so a reset surfaces as a result rather than a 502. The
+	// article-retrieval path retries similarly (via guava-retrying); this is the lightweight
+	// equivalent for a single synchronous search request.
+	private static final int MAX_ATTEMPTS = 3;
+	private static final long RETRY_BACKOFF_MS = 250L;
+
 	// Same credentials the retrieval path uses (injected into the deployment as env/secret).
 	private static final String INST_TOKEN = System.getenv("SCOPUS_INST_TOKEN");
 	private static final String API_KEY = System.getenv("SCOPUS_API_KEY");
@@ -99,14 +106,29 @@ public class ScopusSearchService {
 
 	private HttpResponse<String> get(String url) throws IOException, InterruptedException {
 		slf4jLogger.info("Scopus search: {}", url);
-		HttpRequest.Builder builder = HttpRequest.newBuilder()
+		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(url))
 				.timeout(REQUEST_TIMEOUT)
 				.header("Accept", "application/json")
-				.GET();
-		builder.header("X-ELS-Insttoken", INST_TOKEN);
-		builder.header("X-ELS-APIKey", API_KEY);
-		return httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+				.header("X-ELS-Insttoken", INST_TOKEN)
+				.header("X-ELS-APIKey", API_KEY)
+				.GET()
+				.build();
+		IOException last = null;
+		for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+			try {
+				return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+			} catch (IOException e) {
+				// Transient (connection reset, timeout) — retry; a permanent failure still
+				// throws after the last attempt and the controller maps it to 502.
+				last = e;
+				slf4jLogger.warn("Scopus search attempt {}/{} failed ({}); retrying", attempt, MAX_ATTEMPTS, e.toString());
+				if (attempt < MAX_ATTEMPTS) {
+					Thread.sleep(RETRY_BACKOFF_MS * attempt);
+				}
+			}
+		}
+		throw last;
 	}
 
 	private static String enc(String s) {
