@@ -88,6 +88,54 @@ public class ScopusSearchService {
 	}
 
 	/**
+	 * Elsevier's page-size ceilings, which differ BY VIEW. Probed against the live API rather than
+	 * read off a page: with {@code view=COMPLETE}, {@code count=50} and {@code count=200} both come
+	 * back <strong>HTTP 400 INVALID_INPUT</strong> — not a truncated page, a refusal. So a caller
+	 * who wants more than 25 COMPLETE records must PAGE with {@code start}; there is no single call
+	 * that will do it, and pretending otherwise is how you end up printing "top 50" over 25 records.
+	 */
+	public static final int MAX_COUNT_COMPLETE = 25;
+	public static final int MAX_COUNT_STANDARD = 200;
+
+	/** The ceiling that applies to a given view. */
+	public static int maxCountFor(String view) {
+		return view != null && "COMPLETE".equalsIgnoreCase(view.trim()) ? MAX_COUNT_COMPLETE : MAX_COUNT_STANDARD;
+	}
+
+	/**
+	 * Search Scopus with the query passed through <strong>VERBATIM</strong>.
+	 *
+	 * <p>This is the whole point of this method, and the difference between it and
+	 * {@link #searchDocuments}: that one force-wraps the caller's terms in
+	 * {@code TITLE-ABS-KEY(...)}, so a caller can never express a TOP-LEVEL limit. Nest
+	 * {@code PUBYEAR > 2020} inside {@code TITLE-ABS-KEY()} and Elsevier answers
+	 * {@code HTTP 400 "Error translating query"} — loudly, which is the good news, but it means the
+	 * wrapped endpoint simply cannot run a real search strategy. Verified against the live API:
+	 * passed raw, a query narrows exactly as a librarian expects
+	 * (2,900 → {@code AND PUBYEAR > 2020} → 1,958 → {@code AND DOCTYPE(ar)} → 1,376).
+	 *
+	 * <p>The caller writes native Scopus. NOTHING here translates a query from another database's
+	 * syntax, and nothing ever should: Cochrane and PRESS expect a bespoke, separately peer-reviewed
+	 * strategy per database, and a mechanical MeSH → Scopus transliteration is exactly the artifact
+	 * a librarian would reject at review.
+	 *
+	 * <p>To COUNT without retrieving, ask for {@code count=1} and read
+	 * {@code search-results.opensearch:totalResults}. Not {@code count=0} — Elsevier ignores that
+	 * and silently returns 25 records.
+	 */
+	public HttpResponse<String> searchRaw(String query, int count, int start, String view)
+			throws IOException, InterruptedException {
+		StringBuilder url = new StringBuilder(SCOPUS_SEARCH)
+				.append("?query=").append(enc(query.trim()))
+				.append("&count=").append(count)
+				.append("&start=").append(start);
+		if (!nullToEmpty(view).trim().isEmpty()) {
+			url.append("&view=").append(enc(view.trim().toUpperCase()));
+		}
+		return get(url.toString());
+	}
+
+	/**
 	 * Search Scopus authors by name, scoped to an affiliation (defaults to Weill Cornell).
 	 * Returns Elsevier's {@code search-results} JSON of author profiles.
 	 */
