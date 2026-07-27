@@ -51,14 +51,12 @@ phases:
           docker logout $REPOSITORY_URI
           aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region us-east-1 --role-arn $EKS_KUBECTL_ROLE_ARN
         fi
-        if expr "${BRANCH}" : ".*master" >/dev/null; then
-          kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n reciter
-        fi
-        if expr "${BRANCH}" : ".*dev" >/dev/null; then
+        if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null; then
           # Apply the rendered manifest (CONTAINER_IMAGE already substituted above) rather than
           # only bumping the image tag, so deployment changes — probes, env, resources — actually
           # deploy. `set image` alone left the startupProbe in kubernetes/k8-deployment.yaml
           # unapplied, so the slower Boot 3 image was killed by the liveness probe mid-startup.
+          # #32/#33 fixed this on the dev arm only; prod needs the same or it crashloops identically.
           kubectl apply -f kubernetes/k8-deployment.yaml -n reciter
         fi
         if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
