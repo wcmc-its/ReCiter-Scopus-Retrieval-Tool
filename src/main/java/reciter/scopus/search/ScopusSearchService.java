@@ -33,6 +33,21 @@ public class ScopusSearchService {
 
 	/** Scopus returns at most this many documents per request; the JSON's total reports the real count. */
 	private static final int DOCUMENT_PAGE_SIZE = 200;
+
+	/**
+	 * Fields requested for a document search. {@code field} is a WHITELIST — anything omitted here
+	 * is absent from the response — so this list must cover everything a caller reads.
+	 *
+	 * <p>Its real job is {@code author}. The default view populates only {@code dc:creator}, the
+	 * FIRST author, so a three-author chapter came back as one name. The obvious fix,
+	 * {@code view=COMPLETE}, is a trap: it caps a page at {@link #MAX_COUNT_COMPLETE} and REFUSES
+	 * {@code count=200} with HTTP 400 (see below), so it would trade missing authors for missing
+	 * documents, or force paging. Asking for {@code author} by field returns the full author array
+	 * at {@code count=200} in a single call — probed live: 117/117 entries carried it.
+	 */
+	private static final String DOCUMENT_FIELDS = String.join(",",
+			"dc:identifier", "dc:title", "dc:creator", "author", "prism:doi",
+			"prism:coverDate", "prism:publicationName", "pubmed-id", "subtypeDescription");
 	private static final int AUTHOR_PAGE_SIZE = 10;
 	private static final String DEFAULT_AFFILIATION = "Weill Cornell";
 
@@ -72,6 +87,11 @@ public class ScopusSearchService {
 	 */
 	public HttpResponse<String> searchDocuments(String by, String term)
 			throws IOException, InterruptedException {
+		return get(buildDocumentSearchUrl(by, term));
+	}
+
+	/** Package-private so the field whitelist and the page size can be pinned by a test. */
+	static String buildDocumentSearchUrl(String by, String term) {
 		String t = term == null ? "" : term.trim();
 		String query;
 		String sort = "&sort=-coverDate";
@@ -83,8 +103,8 @@ public class ScopusSearchService {
 		} else {
 			query = "AU-ID(" + t.replaceFirst("(?i)^AUTHOR_ID:", "") + ")";
 		}
-		String url = SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort;
-		return get(url);
+		return SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort
+				+ "&field=" + enc(DOCUMENT_FIELDS);
 	}
 
 	/**
