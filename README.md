@@ -29,9 +29,9 @@ This tool has several advantages over using the Scopus API alone:
 
 ## Prerequisites
 
-- Java 17
+- Java 21
 - Latest version of Maven. To install Maven navigate to the directory where ReCiter Scopus Retrieval Tool will be installed, execute `brew install maven` and then `mvn clean install`
-If you want to use Java 17 then update `<java.version>17</java.version>` in [pom.xml](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/blob/59b12e33edf744afe4431f3e4d35e5ba16821b09/pom.xml#L18)
+If you want to use Java 21 then update `<java.version>21</java.version>` in [pom.xml](https://github.com/wcmc-its/ReCiter-Scopus-Retrieval-Tool/blob/59b12e33edf744afe4431f3e4d35e5ba16821b09/pom.xml#L18)
 
 It is not necessary to install ReCiter in order to use the API.
 
