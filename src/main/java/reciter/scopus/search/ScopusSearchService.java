@@ -87,11 +87,31 @@ public class ScopusSearchService {
 	 */
 	public HttpResponse<String> searchDocuments(String by, String term)
 			throws IOException, InterruptedException {
-		return get(buildDocumentSearchUrl(by, term));
+		return searchDocuments(by, term, 0);
+	}
+
+	/**
+	 * Search Scopus documents, paged. {@code start} is Elsevier's 0-based offset into the result
+	 * set; the page size stays {@link #DOCUMENT_PAGE_SIZE} (200), so a caller pages with
+	 * {@code start = 0, 200, 400 …} until it has read {@code opensearch:totalResults}.
+	 */
+	public HttpResponse<String> searchDocuments(String by, String term, int start)
+			throws IOException, InterruptedException {
+		return get(buildDocumentSearchUrl(by, term, start));
 	}
 
 	/** Package-private so the field whitelist and the page size can be pinned by a test. */
 	static String buildDocumentSearchUrl(String by, String term) {
+		return buildDocumentSearchUrl(by, term, 0);
+	}
+
+	/**
+	 * {@code start} is Elsevier's 0-based offset into the result set; the page size stays
+	 * {@link #DOCUMENT_PAGE_SIZE} (200), so a caller pages with {@code start = 0, 200, 400 …}
+	 * until it has read {@code opensearch:totalResults}. Omitted from the URL at {@code start = 0}
+	 * so every unpaged call stays byte-identical to before paging existed.
+	 */
+	static String buildDocumentSearchUrl(String by, String term, int start) {
 		String t = term == null ? "" : term.trim();
 		String query;
 		String sort = "&sort=-coverDate";
@@ -103,8 +123,9 @@ public class ScopusSearchService {
 		} else {
 			query = "AU-ID(" + t.replaceFirst("(?i)^AUTHOR_ID:", "") + ")";
 		}
-		return SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort
+		String url = SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort
 				+ "&field=" + enc(DOCUMENT_FIELDS);
+		return start > 0 ? url + "&start=" + start : url;
 	}
 
 	/**
