@@ -21,7 +21,7 @@ import reciter.scopus.search.ScopusSearchService;
  * {@link ScopusController}). Both proxy Elsevier with the tool's credentials and return
  * the Elsevier {@code search-results} JSON verbatim, so the caller keeps its own parsing.
  *
- *   GET  /scopus/search/documents?by={author|keyword|doi}&term=...
+ *   GET  /scopus/search/documents?by={author|keyword|doi}&term=...&start=...
  *   GET  /scopus/search/authors?lastName=...&firstName=...&affiliation=...
  *   POST /scopus/search/query    {query, count, start, view}   — query passed through VERBATIM
  */
@@ -40,15 +40,19 @@ public class ScopusSearchController {
 	@GetMapping(value = "/documents", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> documents(
 			@RequestParam(name = "by", required = false) String by,
-			@RequestParam(name = "term") String term) {
+			@RequestParam(name = "term") String term,
+			@RequestParam(name = "start", required = false) Integer start) {
 		if (isBlank(term)) {
 			return ResponseEntity.badRequest().body("{\"error\":\"term is required\"}");
+		}
+		if (start != null && start < 0) {
+			return ResponseEntity.badRequest().body("{\"error\":\"start must be >= 0\"}");
 		}
 		if (!searchService.isConfigured()) {
 			return credentialsMissing();
 		}
 		try {
-			return passthrough(searchService.searchDocuments(by, term));
+			return passthrough(searchService.searchDocuments(by, term, start == null ? 0 : start));
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			return upstreamFailure(e);
