@@ -23,9 +23,16 @@ import reciter.scopus.retriever.ScopusArticleRetriever;
 @RequestMapping("/scopus")
 @Tag(name="ScopusController", description ="Querying Scopus with PMID, SCOPUS-ID or DOI")
 public class ScopusController {
+	
     private static final Logger log = LoggerFactory.getLogger(ScopusController.class);
 
-    @Operation(summary = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)")
+    private final ScopusArticleRetriever scopusArticleRetriever;
+
+    public ScopusController(ScopusArticleRetriever scopusArticleRetriever) {
+        this.scopusArticleRetriever = scopusArticleRetriever;
+    }
+
+    @Operation(summary ="Querying Scopus with PMID, SCOPUS-ID or DOI. Add type — only accepts PMID, SCOPUS-ID or DOI (case-insensitive)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved list"),
             @ApiResponse(responseCode = "401", description = "You are not authorized to view the resource"),
@@ -34,10 +41,10 @@ public class ScopusController {
     })
     @PostMapping(value = "/query/", produces = "application/json")
     public ResponseEntity<List<ScopusArticle>> retrieve(@RequestBody ScopusQuery scopusQuery) {
-    	log.info("Calling retrieve with PMIDs size=[{}]", scopusQuery.getQuery().size());
-        ScopusArticleRetriever scopusArticleRetriever = new ScopusArticleRetriever();
-        List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
-        log.info("Finished retrieving with PMIDs size=[{}]", scopusQuery.getQuery().size());
+        log.info("Calling retrieve with PMIDs size=[{}]", scopusQuery.getQuery().size());
+        List<ScopusArticle> scopusArticles = scopusArticleRetriever.retrieveScopus(
+                new ArrayList<>(scopusQuery.getQuery()), scopusQuery.getType());
+        log.info("Finished retrieving with PMIDs size=[{}]", scopusArticles.size());
         return ResponseEntity.ok(scopusArticles);
     }
 }
