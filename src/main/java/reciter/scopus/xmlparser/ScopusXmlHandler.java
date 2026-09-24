@@ -339,7 +339,7 @@ public class ScopusXmlHandler extends DefaultHandler {
 			return fallback;
 		}
 		String trimmed = value.trim();
-		if (trimmed.isEmpty()) {
+		if (trimmed.isBlank()) {
 			return fallback;
 		}
 		try {
@@ -355,7 +355,7 @@ public class ScopusXmlHandler extends DefaultHandler {
 			return fallback;
 		}
 		String trimmed = value.trim();
-		if (trimmed.isEmpty()) {
+		if (trimmed.isBlank()) {
 			return fallback;
 		}
 		try {

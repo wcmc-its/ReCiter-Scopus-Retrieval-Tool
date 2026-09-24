@@ -135,7 +135,7 @@ public class ScopusSearchController {
 			throw new IllegalArgumentException("query is required");
 		}
 		String view = r.view() == null ? "" : r.view().trim();
-		if (!view.isEmpty() && !view.equalsIgnoreCase("STANDARD") && !view.equalsIgnoreCase("COMPLETE")) {
+		if (!view.isBlank() && !view.equalsIgnoreCase("STANDARD") && !view.equalsIgnoreCase("COMPLETE")) {
 			throw new IllegalArgumentException("view must be STANDARD or COMPLETE");
 		}
 		if (r.count() != null) {
@@ -178,6 +178,6 @@ public class ScopusSearchController {
 	}
 
 	private static boolean isBlank(String s) {
-		return s == null || s.trim().isEmpty();
+		return s == null || s.isBlank();
 	}
 }
