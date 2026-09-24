@@ -53,6 +53,7 @@ public class ScopusSearchController {
 		}
 		try {
 			return passthrough(searchService.searchDocuments(by, term, start == null ? 0 : start));
+
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			return upstreamFailure(e);
