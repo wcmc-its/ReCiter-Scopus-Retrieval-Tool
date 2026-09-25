@@ -15,10 +15,7 @@ phases:
         # Extract username and password from the JSON response
         - DOCKER_USERNAME=$(echo $SECRET | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')
         - DOCKER_PASSWORD=$(echo $SECRET | sed -n 's/.*"password":"\([^"]*\)".*/\1/p')
-      
-        # Print the Docker username to the CodeBuild log
-        - echo "Docker Username $DOCKER_USERNAME"
-        
+
         # Log in to Docker registry
         - echo "Logging in to Docker registry"
         - echo "$DOCKER_PASSWORD" | docker login --username $DOCKER_USERNAME --password-stdin
@@ -55,10 +52,14 @@ phases:
           aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region us-east-1 --role-arn $EKS_KUBECTL_ROLE_ARN
         fi
         if expr "${BRANCH}" : ".*master" >/dev/null; then
-          kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME
+          kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n reciter
         fi
         if expr "${BRANCH}" : ".*dev" >/dev/null; then
-          kubectl set image deployment/reciter-scopus-dev reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME
+          # Apply the rendered manifest (CONTAINER_IMAGE already substituted above) rather than
+          # only bumping the image tag, so deployment changes — probes, env, resources — actually
+          # deploy. `set image` alone left the startupProbe in kubernetes/k8-deployment.yaml
+          # unapplied, so the slower Boot 3 image was killed by the liveness probe mid-startup.
+          kubectl apply -f kubernetes/k8-deployment.yaml -n reciter
         fi
         if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
           kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME

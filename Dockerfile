@@ -1,4 +1,3 @@
-#FROM adoptopenjdk/openjdk11:alpine-jre
 FROM amazoncorretto:21-alpine
 
 RUN mkdir -p /app
