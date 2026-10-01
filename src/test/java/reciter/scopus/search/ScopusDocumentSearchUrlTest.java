@@ -1,5 +1,6 @@
 package reciter.scopus.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +46,37 @@ class ScopusDocumentSearchUrlTest {
 	}
 
 	@Test
+	void startZeroIsByteIdenticalToTheTwoArgCall() {
+		// Paging must not change a single byte of the URL that existing callers (and every other
+		// test in this class) already depend on.
+		String unpaged = ScopusSearchService.buildDocumentSearchUrl("author", "23493733900");
+		String pagedAtZero = ScopusSearchService.buildDocumentSearchUrl("author", "23493733900", 0);
+		assertEquals(unpaged, pagedAtZero, "start=0 must produce the exact same URL as the 2-arg call");
+		assertFalse(pagedAtZero.contains("start="), "start=0 must be omitted, not sent as start=0");
+	}
+
+	@Test
+	void startAboveZeroAppendsTheOffsetAndKeepsEverythingElse() {
+		String page1 = ScopusSearchService.buildDocumentSearchUrl("author", "23493733900");
+		String page2 = ScopusSearchService.buildDocumentSearchUrl("author", "23493733900", 200);
+		assertTrue(page2.contains("&start=200"), "start=200 must be appended once start > 0");
+		assertTrue(page2.contains("count=200"), "page size must stay 200 regardless of start");
+		assertTrue(page2.contains("&sort=-coverDate"), "start must not disturb the author-search sort");
+		assertEquals(fieldList(page1), fieldList(page2), "start must not disturb the field whitelist");
+	}
+
+	@Test
+	void startCarriesThroughTheKeywordAndDoiShapes() {
+		String keyword = ScopusSearchService.buildDocumentSearchUrl("keyword", "vitamin d", 200);
+		assertTrue(keyword.contains("TITLE-ABS-KEY%28"), "keyword search must still use TITLE-ABS-KEY()");
+		assertTrue(keyword.contains("&start=200"), "keyword search must carry start when > 0");
+
+		String doi = ScopusSearchService.buildDocumentSearchUrl("doi", "10.1016/j.autrev.2009.02.011", 200);
+		assertTrue(doi.contains("DOI%28"), "doi search must still use the DOI() field");
+		assertTrue(doi.contains("&start=200"), "doi search must carry start when > 0");
+	}
+
+	@Test
 	void stillBuildsTheThreeQueryShapes() {
 		assertTrue(ScopusSearchService.buildDocumentSearchUrl("author", "AUTHOR_ID:23493733900")
 				.contains("AU-ID%2823493733900%29"), "author search must strip the AUTHOR_ID: prefix");
@@ -55,9 +87,15 @@ class ScopusDocumentSearchUrlTest {
 		assertFalse(keyword.contains("sort="), "keyword search stays in relevance order");
 	}
 
-	/** The decoded value of the field= parameter. */
+	/** The decoded value of the field= parameter, stopping before any parameter that follows it. */
 	private static String fieldList(String url) {
 		int i = url.indexOf("field=");
-		return i < 0 ? "" : url.substring(i + "field=".length()).replace("%3A", ":").replace("%2C", ",");
+		if (i < 0) {
+			return "";
+		}
+		String rest = url.substring(i + "field=".length());
+		int amp = rest.indexOf('&');
+		String raw = amp < 0 ? rest : rest.substring(0, amp);
+		return raw.replace("%3A", ":").replace("%2C", ",");
 	}
 }
