@@ -102,7 +102,7 @@ public class ScopusArticleRetriever {
 				.withWaitStrategy(WaitStrategies.fibonacciWait(100L, 2L, TimeUnit.MINUTES))
 				.withStopStrategy(StopStrategies.stopAfterAttempt(10))
 				.build();
-		if (API_KEY == null || INST_TOKEN == null) {
+		if (API_KEY == null || API_KEY.isBlank()|| INST_TOKEN == null || INST_TOKEN.isBlank()) {
 			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus requests will be rejected (401) until they are configured.");
 		}
