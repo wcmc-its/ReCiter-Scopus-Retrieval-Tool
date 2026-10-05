@@ -170,7 +170,7 @@ public class ScopusSearchService {
 				.append("?query=").append(enc(query.trim()))
 				.append("&count=").append(count)
 				.append("&start=").append(start);
-		if (!nullToEmpty(view).trim().isEmpty()) {
+		if (!nullToEmpty(view).isBlank()) {
 			url.append("&view=").append(enc(view.trim().toUpperCase()));
 		}
 		return get(url.toString());
@@ -184,11 +184,11 @@ public class ScopusSearchService {
 			throws IOException, InterruptedException {
 		StringBuilder q = new StringBuilder("authlast(").append(nullToEmpty(lastName).trim()).append(")");
 		String first = nullToEmpty(firstName).trim();
-		if (!first.isEmpty()) {
+		if (!first.isBlank()) {
 			q.append(" AND authfirst(").append(first).append(")");
 		}
 		String affil = nullToEmpty(affiliation).trim();
-		q.append(" AND affil(").append(affil.isEmpty() ? DEFAULT_AFFILIATION : affil).append(")");
+		q.append(" AND affil(").append(affil.isBlank() ? DEFAULT_AFFILIATION : affil).append(")");
 		String url = AUTHOR_SEARCH + "?query=" + enc(q.toString()) + "&count=" + AUTHOR_PAGE_SIZE;
 		return get(url);
 	}

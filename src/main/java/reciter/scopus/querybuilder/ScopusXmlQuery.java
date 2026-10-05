@@ -2,19 +2,11 @@ package reciter.scopus.querybuilder;
 
 public class ScopusXmlQuery {
 	
-	private final String query;
-	private final int count;
-	private final String field;
-	private final int start;
 	private final String queryUrl;
-	
+
 	private static final String SCOPUS_URL_PREFIX = "https://api.elsevier.com/content/search/scopus?query=";
-	
+
 	private ScopusXmlQuery(ScopusXmlQueryBuilder scopusXmlQueryBuilder) {
-		query = scopusXmlQueryBuilder.query;
-		count = scopusXmlQueryBuilder.count;
-		field = scopusXmlQueryBuilder.field;
-		start = scopusXmlQueryBuilder.start;
 		queryUrl = scopusXmlQueryBuilder.queryUrl;
 	}
 	
@@ -33,26 +25,9 @@ public class ScopusXmlQuery {
 		private int start = 0;
 		private String queryUrl;
 		
-		public ScopusXmlQueryBuilder(String query) {
-			this.query = query;
-			count = 1; // Assuming that it's fetching a single Scopus article.
-		}
-		
 		public ScopusXmlQueryBuilder(String query, int count) {
 			this.query = query;
 			this.count = count;
-		}
-		public ScopusXmlQueryBuilder count(int count) {
-			this.count = count;
-			return this;
-		}
-		public ScopusXmlQueryBuilder field(String field) {
-			this.field = field;
-			return this;
-		}
-		public ScopusXmlQueryBuilder start(int start) {
-			this.start = start;
-			return this;
 		}
 		public ScopusXmlQuery build() {
 			StringBuilder sb = new StringBuilder();
@@ -67,42 +42,6 @@ public class ScopusXmlQuery {
 			queryUrl = sb.toString();
 			return new ScopusXmlQuery(this);
 		}
-		
-		public ScopusXmlQuery buildSingle() {
-			StringBuilder sb = new StringBuilder();
-			sb.append(ScopusXmlQuery.SCOPUS_URL_PREFIX);
-			sb.append("pmid(");
-			sb.append(query);
-			sb.append(")");
-			sb.append("&count=");
-			sb.append(count);
-			sb.append("&field=");
-			sb.append(field);
-			sb.append("&start=");
-			sb.append(start);
-			queryUrl = sb.toString();
-			return new ScopusXmlQuery(this);
-		}
-	}
-
-	public String getQuery() {
-		return query;
-	}
-
-	public int getCount() {
-		return count;
-	}
-
-	public String getField() {
-		return field;
-	}
-
-	public int getStart() {
-		return start;
-	}
-
-	public static String getScopusUrlPrefix() {
-		return SCOPUS_URL_PREFIX;
 	}
 
 	public String getQueryUrl() {
