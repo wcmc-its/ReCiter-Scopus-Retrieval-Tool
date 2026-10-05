@@ -3,6 +3,7 @@ package reciter.controller;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,6 +48,14 @@ class ScopusControllerValidationTest {
     void rejectsEmptyQuery() {
         assertThrows(IllegalArgumentException.class,
                 () -> ScopusController.validate(query(Collections.emptyList(), "pmid")));
+    }
+
+    @Test
+    void rejectsNullOrBlankIdentifiers() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ScopusController.validate(query(Arrays.asList("123", null), "pmid")));
+        assertThrows(IllegalArgumentException.class,
+                () -> ScopusController.validate(query(Collections.singletonList("  "), "pmid")));
     }
 
     @Test

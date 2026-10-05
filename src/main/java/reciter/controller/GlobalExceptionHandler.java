@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger slf4jLogger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<Map<String, Object>> handleBadRequest(Exception e) {
         String message = (e instanceof HttpMessageNotReadableException)
                 ? "Request body is missing or not valid JSON."
                 : e.getMessage();
-        slf4jLogger.warn("Rejected Scopus request: {}", message);
+        log.warn("Rejected Scopus request: {}", message);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", HttpStatus.BAD_REQUEST.getReasonPhrase());

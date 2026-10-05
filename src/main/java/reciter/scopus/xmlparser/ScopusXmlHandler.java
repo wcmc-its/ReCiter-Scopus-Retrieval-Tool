@@ -35,7 +35,7 @@ import reciter.model.scopus.ScopusArticle;
  */
 public class ScopusXmlHandler extends DefaultHandler {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusXmlHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusXmlHandler.class);
 
 	private static final String SCOPUS_ID_PREFIX = "SCOPUS_ID:";
 
@@ -238,7 +238,7 @@ public class ScopusXmlHandler extends DefaultHandler {
 	private void endEntry() {
 		if (bError) {
 			errorEntryCount++;
-			slf4jLogger.warn("Scopus returned error entry (total errors in this batch: {})", errorEntryCount);
+			log.warn("Scopus returned error entry (total errors in this batch: {})", errorEntryCount);
 			scopusArticle = null;
 			bError = false;
 			return;
@@ -345,7 +345,7 @@ public class ScopusXmlHandler extends DefaultHandler {
 		try {
 			return Long.parseLong(trimmed);
 		} catch (NumberFormatException e) {
-			slf4jLogger.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
+			log.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
 			return fallback;
 		}
 	}
@@ -361,7 +361,7 @@ public class ScopusXmlHandler extends DefaultHandler {
 		try {
 			return Integer.parseInt(trimmed);
 		} catch (NumberFormatException e) {
-			slf4jLogger.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
+			log.warn("Non-numeric value [{}] where a number was expected; using {}.", trimmed, fallback);
 			return fallback;
 		}
 	}
