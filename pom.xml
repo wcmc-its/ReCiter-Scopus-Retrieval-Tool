@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>edu.wcmc.reciter</groupId>
 	<artifactId>reciter-scopus-retrieval-tool</artifactId>
-	<version>4.0.0</version>
+	<version>4.0.0-SNAPSHOT</version>
 	<name>ReCiter-Scopus-Retrieval-Tool</name>
 	<description>A tool to retrieve Scopus articles.</description>
 	<parent>
@@ -41,7 +41,7 @@
 		<dependency>
 			<groupId>edu.cornell.weill.reciter</groupId>
 			<artifactId>reciter-scopus-model</artifactId>
-			<version>4.0.0</version>
+			<version>4.0.0-SNAPSHOT</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
