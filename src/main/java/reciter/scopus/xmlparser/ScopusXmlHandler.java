@@ -95,6 +95,10 @@ public class ScopusXmlHandler extends DefaultHandler {
 		buf.setLength(0);
 		capturing = false;
 
+		if (qName == null || qName.isBlank()) {
+			return;
+		}
+
 		if (qName.equalsIgnoreCase("entry")) {
 			resetEntry();
 		} else if (qName.equalsIgnoreCase("affiliation")) {
@@ -120,6 +124,10 @@ public class ScopusXmlHandler extends DefaultHandler {
 
 	@Override
 	public void endElement(String uri, String localName, String qName) throws SAXException {
+		if (qName == null || qName.isBlank()) {
+			capturing = false;
+			return;
+		}
 		if (qName.equalsIgnoreCase("entry")) {
 			endEntry();
 			capturing = false;
@@ -335,13 +343,10 @@ public class ScopusXmlHandler extends DefaultHandler {
 	}
 
 	private long parseLongOrDefault(String value, long fallback) {
-		if (value == null) {
+		if (value == null || value.isBlank()) {
 			return fallback;
 		}
 		String trimmed = value.trim();
-		if (trimmed.isBlank()) {
-			return fallback;
-		}
 		try {
 			return Long.parseLong(trimmed);
 		} catch (NumberFormatException e) {
@@ -351,13 +356,10 @@ public class ScopusXmlHandler extends DefaultHandler {
 	}
 
 	private int parseIntOrDefault(String value, int fallback) {
-		if (value == null) {
+		if (value == null || value.isBlank()) {
 			return fallback;
 		}
 		String trimmed = value.trim();
-		if (trimmed.isBlank()) {
-			return fallback;
-		}
 		try {
 			return Integer.parseInt(trimmed);
 		} catch (NumberFormatException e) {
