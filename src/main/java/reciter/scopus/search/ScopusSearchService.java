@@ -69,7 +69,7 @@ public class ScopusSearchService {
 
 	public ScopusSearchService() {
 		this.httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-		if (API_KEY == null || INST_TOKEN == null) {
+		if (API_KEY == null || API_KEY.isBlank() || INST_TOKEN == null || INST_TOKEN.isBlank()) {
 			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus search requests will be rejected until they are configured.");
 		}
@@ -77,7 +77,8 @@ public class ScopusSearchService {
 
 	/** True once both Elsevier credentials are present; the controller returns 503 otherwise. */
 	public boolean isConfigured() {
-		return API_KEY != null && INST_TOKEN != null;
+		return  API_KEY != null && !API_KEY.isBlank() 
+				&& INST_TOKEN != null && !INST_TOKEN.isBlank();
 	}
 
 	/**
@@ -167,7 +168,7 @@ public class ScopusSearchService {
 	public HttpResponse<String> searchRaw(String query, int count, int start, String view)
 			throws IOException, InterruptedException {
 		StringBuilder url = new StringBuilder(SCOPUS_SEARCH)
-				.append("?query=").append(enc(query.trim()))
+				.append("?query=").append(enc(nullToEmpty(query).trim()))
 				.append("&count=").append(count)
 				.append("&start=").append(start);
 		if (!nullToEmpty(view).isBlank()) {
@@ -194,6 +195,16 @@ public class ScopusSearchService {
 	}
 
 	private HttpResponse<String> get(String url) throws IOException, InterruptedException {
+		if (API_KEY == null || API_KEY.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable API_KEY is not set");
+		}
+
+		if (INST_TOKEN == null || INST_TOKEN.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable INST_TOKEN is not set");
+		}
+		
 		log.info("Scopus search: {}", url);
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(url))
