@@ -26,13 +26,28 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScopusSearchService {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusSearchService.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusSearchService.class);
 
 	private static final String SCOPUS_SEARCH = "https://api.elsevier.com/content/search/scopus";
 	private static final String AUTHOR_SEARCH = "https://api.elsevier.com/content/search/author";
 
 	/** Scopus returns at most this many documents per request; the JSON's total reports the real count. */
 	private static final int DOCUMENT_PAGE_SIZE = 200;
+
+	/**
+	 * Fields requested for a document search. {@code field} is a WHITELIST — anything omitted here
+	 * is absent from the response — so this list must cover everything a caller reads.
+	 *
+	 * <p>Its real job is {@code author}. The default view populates only {@code dc:creator}, the
+	 * FIRST author, so a three-author chapter came back as one name. The obvious fix,
+	 * {@code view=COMPLETE}, is a trap: it caps a page at {@link #MAX_COUNT_COMPLETE} and REFUSES
+	 * {@code count=200} with HTTP 400 (see below), so it would trade missing authors for missing
+	 * documents, or force paging. Asking for {@code author} by field returns the full author array
+	 * at {@code count=200} in a single call — probed live: 117/117 entries carried it.
+	 */
+	private static final String DOCUMENT_FIELDS = String.join(",",
+			"dc:identifier", "dc:title", "dc:creator", "author", "prism:doi",
+			"prism:coverDate", "prism:publicationName", "pubmed-id", "subtypeDescription");
 	private static final int AUTHOR_PAGE_SIZE = 10;
 	private static final String DEFAULT_AFFILIATION = "Weill Cornell";
 
@@ -54,15 +69,16 @@ public class ScopusSearchService {
 
 	public ScopusSearchService() {
 		this.httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-		if (API_KEY == null || INST_TOKEN == null) {
-			slf4jLogger.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
+		if (API_KEY == null || API_KEY.isBlank() || INST_TOKEN == null || INST_TOKEN.isBlank()) {
+			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus search requests will be rejected until they are configured.");
 		}
 	}
 
 	/** True once both Elsevier credentials are present; the controller returns 503 otherwise. */
 	public boolean isConfigured() {
-		return API_KEY != null && INST_TOKEN != null;
+		return  API_KEY != null && !API_KEY.isBlank() 
+				&& INST_TOKEN != null && !INST_TOKEN.isBlank();
 	}
 
 	/**
@@ -72,6 +88,31 @@ public class ScopusSearchService {
 	 */
 	public HttpResponse<String> searchDocuments(String by, String term)
 			throws IOException, InterruptedException {
+		return searchDocuments(by, term, 0);
+	}
+
+	/**
+	 * Search Scopus documents, paged. {@code start} is Elsevier's 0-based offset into the result
+	 * set; the page size stays {@link #DOCUMENT_PAGE_SIZE} (200), so a caller pages with
+	 * {@code start = 0, 200, 400 …} until it has read {@code opensearch:totalResults}.
+	 */
+	public HttpResponse<String> searchDocuments(String by, String term, int start)
+			throws IOException, InterruptedException {
+		return get(buildDocumentSearchUrl(by, term, start));
+	}
+
+	/** Package-private so the field whitelist and the page size can be pinned by a test. */
+	static String buildDocumentSearchUrl(String by, String term) {
+		return buildDocumentSearchUrl(by, term, 0);
+	}
+
+	/**
+	 * {@code start} is Elsevier's 0-based offset into the result set; the page size stays
+	 * {@link #DOCUMENT_PAGE_SIZE} (200), so a caller pages with {@code start = 0, 200, 400 …}
+	 * until it has read {@code opensearch:totalResults}. Omitted from the URL at {@code start = 0}
+	 * so every unpaged call stays byte-identical to before paging existed.
+	 */
+	static String buildDocumentSearchUrl(String by, String term, int start) {
 		String t = term == null ? "" : term.trim();
 		String query;
 		String sort = "&sort=-coverDate";
@@ -83,8 +124,9 @@ public class ScopusSearchService {
 		} else {
 			query = "AU-ID(" + t.replaceFirst("(?i)^AUTHOR_ID:", "") + ")";
 		}
-		String url = SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort;
-		return get(url);
+		String url = SCOPUS_SEARCH + "?query=" + enc(query) + "&count=" + DOCUMENT_PAGE_SIZE + sort
+				+ "&field=" + enc(DOCUMENT_FIELDS);
+		return start > 0 ? url + "&start=" + start : url;
 	}
 
 	/**
@@ -126,10 +168,10 @@ public class ScopusSearchService {
 	public HttpResponse<String> searchRaw(String query, int count, int start, String view)
 			throws IOException, InterruptedException {
 		StringBuilder url = new StringBuilder(SCOPUS_SEARCH)
-				.append("?query=").append(enc(query.trim()))
+				.append("?query=").append(enc(nullToEmpty(query).trim()))
 				.append("&count=").append(count)
 				.append("&start=").append(start);
-		if (!nullToEmpty(view).trim().isEmpty()) {
+		if (!nullToEmpty(view).isBlank()) {
 			url.append("&view=").append(enc(view.trim().toUpperCase()));
 		}
 		return get(url.toString());
@@ -143,17 +185,27 @@ public class ScopusSearchService {
 			throws IOException, InterruptedException {
 		StringBuilder q = new StringBuilder("authlast(").append(nullToEmpty(lastName).trim()).append(")");
 		String first = nullToEmpty(firstName).trim();
-		if (!first.isEmpty()) {
+		if (!first.isBlank()) {
 			q.append(" AND authfirst(").append(first).append(")");
 		}
 		String affil = nullToEmpty(affiliation).trim();
-		q.append(" AND affil(").append(affil.isEmpty() ? DEFAULT_AFFILIATION : affil).append(")");
+		q.append(" AND affil(").append(affil.isBlank() ? DEFAULT_AFFILIATION : affil).append(")");
 		String url = AUTHOR_SEARCH + "?query=" + enc(q.toString()) + "&count=" + AUTHOR_PAGE_SIZE;
 		return get(url);
 	}
 
 	private HttpResponse<String> get(String url) throws IOException, InterruptedException {
-		slf4jLogger.info("Scopus search: {}", url);
+		if (API_KEY == null || API_KEY.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable API_KEY is not set");
+		}
+
+		if (INST_TOKEN == null || INST_TOKEN.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable INST_TOKEN is not set");
+		}
+		
+		log.info("Scopus search: {}", url);
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(url))
 				.timeout(REQUEST_TIMEOUT)
@@ -170,7 +222,7 @@ public class ScopusSearchService {
 				// Transient (connection reset, timeout) — retry; a permanent failure still
 				// throws after the last attempt and the controller maps it to 502.
 				last = e;
-				slf4jLogger.warn("Scopus search attempt {}/{} failed ({}); retrying", attempt, MAX_ATTEMPTS, e.toString());
+				log.warn("Scopus search attempt {}/{} failed ({}); retrying", attempt, MAX_ATTEMPTS, e.toString());
 				if (attempt < MAX_ATTEMPTS) {
 					Thread.sleep(RETRY_BACKOFF_MS * attempt);
 				}
