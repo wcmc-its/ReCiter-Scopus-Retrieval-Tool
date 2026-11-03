@@ -35,7 +35,7 @@ public class ScopusUriParserCallable implements Callable<List<ScopusArticle>> {
 	
 	public List<ScopusArticle> parse(String uri) throws ParserConfigurationException, SAXException, IOException {
 		URL url = new URL(uri);
-		log.info(url.toString());
+		log.debug(url.toString());
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestMethod("GET");
 		conn.setRequestProperty("Accept", "application/xml");
