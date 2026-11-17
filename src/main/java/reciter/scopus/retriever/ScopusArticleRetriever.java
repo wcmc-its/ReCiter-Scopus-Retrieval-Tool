@@ -16,9 +16,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.ParserConfigurationException;
@@ -49,11 +49,13 @@ import reciter.scopus.xmlparser.ScopusXmlHandler;
  * Retrieves Scopus articles for a list of identifiers.
  *
  * <p>This is a Spring singleton that owns the heavyweight, reusable resources — a pooled
- * {@link HttpClient}, a bounded {@link ExecutorService}, and an XXE-hardened
+ * {@link HttpClient}, a virtual-thread-per-task {@link ExecutorService}, and an XXE-hardened
  * {@link SAXParserFactory} — instead of allocating a thread pool and HTTP connection per
  * request. Each request's identifiers are split into batches; batches are fetched and parsed
- * concurrently (bounded by the pool), with transient I/O retried. A batch that ultimately
- * fails is logged and skipped so the caller still receives the results that did succeed.</p>
+ * concurrently on virtual threads (in-flight requests bounded by a {@link Semaphore}, since an
+ * unbounded virtual-thread executor would otherwise fire every batch at once), with transient
+ * I/O retried. A batch that ultimately fails is logged and skipped so the caller still receives
+ * the results that did succeed.</p>
  */
 @Service
 public class ScopusArticleRetriever {
@@ -66,7 +68,11 @@ public class ScopusArticleRetriever {
 	 */
 	protected static final int SCOPUS_BATCH_SIZE = 25;
 
-	/** Upper bound on Scopus requests in flight at once (mild throttle against the API). */
+	/**
+	 * Upper bound on Scopus requests in flight at once (mild throttle against the API).
+	 * Virtual threads are cheap and unbounded by default, so this is enforced explicitly via
+	 * {@link #concurrencyLimiter} rather than by the executor's pool size.
+	 */
 	private static final int MAX_CONCURRENT_BATCHES = 8;
 
 	private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
@@ -76,12 +82,14 @@ public class ScopusArticleRetriever {
 	private static final String API_KEY = System.getenv("SCOPUS_API_KEY");
 
 	private final ExecutorService executor;
+	private final Semaphore concurrencyLimiter;
 	private final HttpClient httpClient;
 	private final SAXParserFactory saxParserFactory;
 	private final Retryer<List<ScopusArticle>> retryer;
 
 	public ScopusArticleRetriever() {
-		this.executor = Executors.newFixedThreadPool(MAX_CONCURRENT_BATCHES, daemonThreadFactory());
+		this.executor = Executors.newThreadPerTaskExecutor(virtualThreadFactory());
+		this.concurrencyLimiter = new Semaphore(MAX_CONCURRENT_BATCHES);
 		this.httpClient = HttpClient.newBuilder()
 				.connectTimeout(CONNECT_TIMEOUT)
 				.build();
@@ -94,7 +102,7 @@ public class ScopusArticleRetriever {
 				.withWaitStrategy(WaitStrategies.fibonacciWait(100L, 2L, TimeUnit.MINUTES))
 				.withStopStrategy(StopStrategies.stopAfterAttempt(10))
 				.build();
-		if (API_KEY == null || INST_TOKEN == null) {
+		if (API_KEY == null || API_KEY.isBlank()|| INST_TOKEN == null || INST_TOKEN.isBlank()) {
 			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus requests will be rejected (401) until they are configured.");
 		}
@@ -113,7 +121,7 @@ public class ScopusArticleRetriever {
 		for (String query : pmidQueries) {
 			String scopusUrl = new ScopusXmlQuery.ScopusXmlQueryBuilder(query, SCOPUS_BATCH_SIZE)
 					.build().getQueryUrl();
-			callables.add(retryer.wrap(() -> fetchAndParse(scopusUrl)));
+			callables.add(retryer.wrap(() -> fetchAndParseThrottled(scopusUrl)));
 		}
 
 		List<ScopusArticle> results = new ArrayList<>();
@@ -135,6 +143,22 @@ public class ScopusArticleRetriever {
 		}
 		log.info("Retrieved {} Scopus article(s) across {} batch(es).", results.size(), pmidQueries.size());
 		return results;
+	}
+
+	/**
+	 * Acquires a {@link #concurrencyLimiter} permit before hitting Scopus and releases it
+	 * afterward, so a burst of virtual threads still only has {@link #MAX_CONCURRENT_BATCHES}
+	 * requests in flight at once — the throttle the old fixed platform-thread pool gave us for
+	 * free via its bounded size.
+	 */
+	private List<ScopusArticle> fetchAndParseThrottled(String url)
+			throws IOException, InterruptedException, ParserConfigurationException, SAXException {
+		concurrencyLimiter.acquire();
+		try {
+			return fetchAndParse(url);
+		} finally {
+			concurrencyLimiter.release();
+		}
 	}
 
 	private List<ScopusArticle> fetchAndParse(String url)
@@ -217,13 +241,13 @@ public class ScopusArticleRetriever {
 		return factory;
 	}
 
-	private static ThreadFactory daemonThreadFactory() {
-		AtomicInteger counter = new AtomicInteger();
-		return runnable -> {
-			Thread thread = new Thread(runnable, "scopus-retriever-" + counter.incrementAndGet());
-			thread.setDaemon(true);
-			return thread;
-		};
+	/**
+	 * Named, unpooled virtual threads (one per task) replacing the old fixed platform-thread
+	 * pool. Virtual threads are daemon by nature and cheap to create, so no pool sizing is
+	 * needed here — concurrency is instead capped by {@link #concurrencyLimiter}.
+	 */
+	private static ThreadFactory virtualThreadFactory() {
+		return Thread.ofVirtual().name("scopus-retriever-", 0).factory();
 	}
 
 	/**

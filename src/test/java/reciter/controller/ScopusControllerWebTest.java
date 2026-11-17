@@ -5,8 +5,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,9 +17,9 @@ import reciter.Application;
  * {@link GlobalExceptionHandler}) rather than a 500. The 400 paths fail in {@code validate}
  * before any Scopus call is made, so no credentials or network are needed.
  *
- * <p>Uses an explicit {@code classes = Application.class} because the app bootstraps with
- * {@code @EnableAutoConfiguration} + {@code @ComponentScan} rather than
- * {@code @SpringBootApplication}, so Spring's default config search finds nothing.</p>
+ * <p>The test uses {@code webEnvironment = SpringBootTest.WebEnvironment.MOCK} to avoid
+ * starting a real server, and {@code @AutoConfigureMockMvc} to inject the {@link MockMvc}
+ * test client.</p>
  */
 @SpringBootTest(classes = Application.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc

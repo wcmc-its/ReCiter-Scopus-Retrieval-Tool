@@ -29,7 +29,7 @@ import reciter.scopus.search.ScopusSearchService;
 @RequestMapping("/scopus/search")
 public class ScopusSearchController {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusSearchController.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusSearchController.class);
 
 	private final ScopusSearchService searchService;
 
@@ -39,9 +39,9 @@ public class ScopusSearchController {
 
 	@GetMapping(value = "/documents", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> documents(
-			@RequestParam(name = "by", required = false) String by,
-			@RequestParam(name = "term") String term,
-			@RequestParam(name = "start", required = false) Integer start) {
+			@RequestParam(required = false) String by,
+			@RequestParam String term,
+			@RequestParam(required = false) Integer start) {
 		if (isBlank(term)) {
 			return ResponseEntity.badRequest().body("{\"error\":\"term is required\"}");
 		}
@@ -64,9 +64,9 @@ public class ScopusSearchController {
 
 	@GetMapping(value = "/authors", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> authors(
-			@RequestParam(name = "lastName") String lastName,
-			@RequestParam(name = "firstName", required = false) String firstName,
-			@RequestParam(name = "affiliation", required = false) String affiliation) {
+			@RequestParam String lastName,
+			@RequestParam(required = false) String firstName,
+			@RequestParam(required = false) String affiliation) {
 		if (isBlank(lastName)) {
 			return ResponseEntity.badRequest().body("{\"error\":\"lastName is required\"}");
 		}
@@ -171,7 +171,7 @@ public class ScopusSearchController {
 	}
 
 	private ResponseEntity<String> upstreamFailure(Exception e) {
-		slf4jLogger.error("Scopus search failed", e);
+		log.error("Scopus search failed", e);
 		return ResponseEntity.status(502)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body("{\"error\":\"Scopus search failed\"}");

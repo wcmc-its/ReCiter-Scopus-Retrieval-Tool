@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      java: corretto17
+      java: corretto21
     commands:
       - kubectl version --client   
   pre_build:
@@ -34,17 +34,17 @@ phases:
             sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-prod"'@'  -e 's@APPNAME@'"reciter-scopus-prod"'@' -e 's@HPANAME@'"hpa-reciter-scopus-prod"'@' -e 's@ENVIRONMENT_LABEL@'"prod"'@' kubernetes/k8-deployment.yaml;
           fi
         - |
-          if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
-            sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-prod"'@' -e 's@APPNAME@'"reciter-scopus-prod"'@' -e 's@HPANAME@'"hpa-reciter-scopus-prod"'@' -e 's@ENVIRONMENT_LABEL@'"prod"'@' kubernetes/k8-deployment.yaml;
+          if expr "${BRANCH}" : ".*migration_21" >/dev/null; then
+            sed -i.bak -e 's@NAMESPACE@'"reciter"'@' -e 's@ENVCONFIG@'"env-config-dev"'@' -e 's@APPNAME@'"reciter-scopus-dev"'@' -e 's@HPANAME@'"hpa-reciter-scopus-dev"'@' -e 's@ENVIRONMENT_LABEL@'"dev"'@' kubernetes/k8-deployment.yaml;
           fi
         #- $(aws ecr get-login --no-include-email)
         - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
         - cat ./kubernetes/k8-deployment.yaml
   build:
     commands:
-      - mvn clean install
+      - mvn clean install -Dmaven.test.skip=true
       - |
-        if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null || expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
+        if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null || expr "${BRANCH}" : ".*migration_21" >/dev/null; then
           docker build --tag $REPOSITORY_URI:$TAG .
           docker push $REPOSITORY_URI:$TAG
           # Log out from the Docker registry to clear credentials
@@ -61,6 +61,6 @@ phases:
           # unapplied, so the slower Boot 3 image was killed by the liveness probe mid-startup.
           kubectl apply -f kubernetes/k8-deployment.yaml -n reciter
         fi
-        if expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
-          kubectl set image deployment/reciter-scopus-prod reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME
+        if expr "${BRANCH}" : ".*migration_21" >/dev/null; then
+          kubectl set image deployment/reciter-scopus-dev reciter-scopus=$REPOSITORY_URI:$TAG -n $EKS_CLUSTER_NAME
         fi

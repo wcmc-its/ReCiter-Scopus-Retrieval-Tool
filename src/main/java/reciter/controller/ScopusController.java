@@ -37,9 +37,8 @@ public class ScopusController {
     public ScopusController(ScopusArticleRetriever scopusArticleRetriever) {
         this.scopusArticleRetriever = scopusArticleRetriever;
     }
-    
 
-    @Operation(summary = "Querying Scopus with PMID, SCOPUS-ID or DOI. Add type it only accepts PMID,SCOPUS-ID or DOI(case-insensitive)")
+    @Operation(summary ="Querying Scopus with PMID, SCOPUS-ID or DOI. Add type — only accepts PMID, SCOPUS-ID or DOI (case-insensitive)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved list"),
             @ApiResponse(responseCode = "400", description = "The request body is missing required fields or has an unsupported type"),

@@ -50,6 +50,12 @@ class ScopusControllerValidationTest {
     }
 
     @Test
+    void rejectsBlankType() {
+        assertThrows(IllegalArgumentException.class,
+                () -> ScopusController.validate(query(Collections.singletonList("123"), "  ")));
+    }
+
+    @Test
     void rejectsNullType() {
         assertThrows(IllegalArgumentException.class,
                 () -> ScopusController.validate(query(Collections.singletonList("123"), null)));

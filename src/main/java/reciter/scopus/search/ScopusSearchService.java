@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ScopusSearchService {
 
-	private static final Logger slf4jLogger = LoggerFactory.getLogger(ScopusSearchService.class);
+	private static final Logger log = LoggerFactory.getLogger(ScopusSearchService.class);
 
 	private static final String SCOPUS_SEARCH = "https://api.elsevier.com/content/search/scopus";
 	private static final String AUTHOR_SEARCH = "https://api.elsevier.com/content/search/author";
@@ -69,15 +69,16 @@ public class ScopusSearchService {
 
 	public ScopusSearchService() {
 		this.httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
-		if (API_KEY == null || INST_TOKEN == null) {
-			slf4jLogger.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
+		if (API_KEY == null || API_KEY.isBlank() || INST_TOKEN == null || INST_TOKEN.isBlank()) {
+			log.warn("SCOPUS_API_KEY and/or SCOPUS_INST_TOKEN are not set; "
 					+ "Scopus search requests will be rejected until they are configured.");
 		}
 	}
 
 	/** True once both Elsevier credentials are present; the controller returns 503 otherwise. */
 	public boolean isConfigured() {
-		return API_KEY != null && INST_TOKEN != null;
+		return  API_KEY != null && !API_KEY.isBlank() 
+				&& INST_TOKEN != null && !INST_TOKEN.isBlank();
 	}
 
 	/**
@@ -167,7 +168,7 @@ public class ScopusSearchService {
 	public HttpResponse<String> searchRaw(String query, int count, int start, String view)
 			throws IOException, InterruptedException {
 		StringBuilder url = new StringBuilder(SCOPUS_SEARCH)
-				.append("?query=").append(enc(query.trim()))
+				.append("?query=").append(enc(nullToEmpty(query).trim()))
 				.append("&count=").append(count)
 				.append("&start=").append(start);
 		if (!nullToEmpty(view).isBlank()) {
@@ -194,7 +195,17 @@ public class ScopusSearchService {
 	}
 
 	private HttpResponse<String> get(String url) throws IOException, InterruptedException {
-		slf4jLogger.info("Scopus search: {}", url);
+		if (API_KEY == null || API_KEY.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable API_KEY is not set");
+		}
+
+		if (INST_TOKEN == null || INST_TOKEN.isBlank()) {
+		    throw new IllegalStateException(
+		            "Required environment variable INST_TOKEN is not set");
+		}
+		
+		log.info("Scopus search: {}", url);
 		HttpRequest request = HttpRequest.newBuilder()
 				.uri(URI.create(url))
 				.timeout(REQUEST_TIMEOUT)
@@ -211,7 +222,7 @@ public class ScopusSearchService {
 				// Transient (connection reset, timeout) — retry; a permanent failure still
 				// throws after the last attempt and the controller maps it to 502.
 				last = e;
-				slf4jLogger.warn("Scopus search attempt {}/{} failed ({}); retrying", attempt, MAX_ATTEMPTS, e.toString());
+				log.warn("Scopus search attempt {}/{} failed ({}); retrying", attempt, MAX_ATTEMPTS, e.toString());
 				if (attempt < MAX_ATTEMPTS) {
 					Thread.sleep(RETRY_BACKOFF_MS * attempt);
 				}
