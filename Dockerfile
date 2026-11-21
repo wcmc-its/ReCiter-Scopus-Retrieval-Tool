@@ -1,4 +1,4 @@
-FROM FROM amazoncorretto:17.0.21-alpine
+FROM amazoncorretto:17.0.21-alpine
 
 RUN mkdir -p /app
 WORKDIR /app
