@@ -44,6 +44,10 @@ phases:
     commands:
       - mvn clean install
       - |
+        # Without set -e a failed docker build/push is swallowed (the block's status is the
+        # last command's), and the deploy below then points the cluster at a tag that was
+        # never pushed. That left reciter-scopus-dev/prod in ImagePullBackOff on 2026-11-18.
+        set -e
         if expr "${BRANCH}" : ".*master" >/dev/null || expr "${BRANCH}" : ".*dev" >/dev/null || expr "${BRANCH}" : ".*MigrationFromJDk11ToAWSCorretto17" >/dev/null; then
           docker build --tag $REPOSITORY_URI:$TAG .
           docker push $REPOSITORY_URI:$TAG
